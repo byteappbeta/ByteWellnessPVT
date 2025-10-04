@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>BYTE WELLNESS PVT</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -122,13 +123,15 @@
   }
 </script>
 <script>
-  // Prevent links from opening in Chrome browser
+  // Run only when app is opened as PWA
   if (window.matchMedia('(display-mode: standalone)').matches) {
-    document.querySelectorAll('a').forEach(link => {
-      link.addEventListener('click', function(e) {
-        if (this.href.startsWith(window.location.origin)) {
+    // Force links to behave like in-app navigation
+    document.querySelectorAll("a").forEach(link => {
+      link.addEventListener("click", e => {
+        let url = link.getAttribute("href");
+        if (url && !url.startsWith("http")) {
           e.preventDefault();
-          window.location.href = this.href;
+          window.location.href = url;
         }
       });
     });
@@ -136,5 +139,6 @@
 </script>
 </body>
 </html>
+
 
 
