@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-
   <title>BYTE WELLNESS PVT</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -11,35 +10,38 @@
     .card-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:25px; margin-top:25px; }
     .card { background:white; padding:35px 25px; border-radius:15px; box-shadow:0 6px 20px rgba(0,0,0,0.1); text-align:center; font-weight:600; font-size:22px; cursor:pointer; transition:0.2s; text-transform:uppercase; }
     .card:hover { transform:translateY(-6px); box-shadow:0 10px 25px rgba(0,0,0,0.15); }
-    .card.disabled { color:#888; border:2px dashed #ccc; cursor:not-allowed; text-transform:none; }
     .btn-back { display:inline-block; margin-top:30px; padding:14px 28px; background:#1C39BB; color:white; font-size:16px; font-weight:700; border:none; border-radius:10px; cursor:pointer; transition:0.3s; text-transform:uppercase; }
     .btn-back:hover { background:#162f94; }
-    #inventory h2, #warehouse h2 { font-weight:700; text-align:center; margin-top:20px; color:#1C39BB; text-transform:uppercase; }
+    h2 { font-weight:700; text-align:center; margin-top:20px; color:#1C39BB; text-transform:uppercase; }
     table { width:100%; border-collapse:collapse; background:white; border-radius:12px; overflow:hidden; box-shadow:0 5px 20px rgba(0,0,0,0.1); text-align:center; font-weight:500; font-size:16px; margin-top:25px; }
     th { background:#1C39BB; color:white; padding:14px; text-transform:uppercase; letter-spacing:1px; }
     td { padding:14px; border-bottom:1px solid #ddd; text-align:center; }
     tr:hover { background:#f1f1f1; }
     .hidden { display:none; }
+    .filters { text-align:center; margin-top:20px; }
+    .filters input { margin:0 10px; padding:8px; font-size:14px; }
+    .export-btn { margin-top:15px; padding:10px 20px; background:#1C39BB; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600; }
+    .export-btn:hover { background:#162f94; }
+    tfoot td { font-weight:700; background:#f0f0f0; }
+    /* Channel colors */
+    .amazon { background:#FF9900; color:white; }
+    .shopify { background:#96BF48; color:white; }
+    .flipkart { background:#2874F0; color:white; }
+    .blinkit { background:#F7E415; color:#333; }
   </style>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#000000">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
-
 <header>BYTE WELLNESS PVT</header>
 
 <!-- HOME -->
 <div class="container" id="home">
   <div class="card-grid">
     <div class="card" onclick="showInventory()">Inventory</div>
-    <div class="card disabled">Sales</div>
+    <div class="card" onclick="showSales()">Sales</div>
   </div>
 </div>
 
-<!-- INVENTORY PAGE -->
+<!-- INVENTORY PAGE (unchanged) -->
 <div class="container hidden" id="inventory">
   <h2>Warehouses</h2>
   <div class="card-grid">
@@ -51,175 +53,157 @@
   <button class="btn-back" onclick="goHome()">Back</button>
 </div>
 
-<!-- WAREHOUSE DETAIL PAGE -->
-<div class="container hidden" id="warehouse">
-  <h2 id="warehouseName"></h2>
-  <div id="lastSynced" style="text-align:center; font-weight:700; margin-bottom:10px; text-transform:uppercase;"></div>
-  <table>
+<!-- SALES MAIN PAGE -->
+<div class="container hidden" id="sales">
+  <h2>Sales</h2>
+  <div class="card-grid">
+    <div class="card" onclick="showSalesOverview()">Sales Overview</div>
+    <div class="card" onclick="showSalesShare()">Total Sales & Share</div>
+  </div>
+  <button class="btn-back" onclick="goHome()">Back</button>
+</div>
+
+<!-- SALES OVERVIEW -->
+<div class="container hidden" id="salesOverview">
+  <h2>Sales Overview</h2>
+  <div class="card-grid">
+    <div class="card amazon" onclick="alert('Amazon sales page to be added')">Amazon</div>
+    <div class="card shopify" onclick="alert('Shopify sales page to be added')">Shopify</div>
+    <div class="card flipkart" onclick="alert('Flipkart sales page to be added')">Flipkart</div>
+    <div class="card blinkit" onclick="showBlinkit()">Blinkit</div>
+  </div>
+  <button class="btn-back" onclick="showSales()">Back</button>
+</div>
+
+<!-- SALES SHARE PAGE (placeholder for now) -->
+<div class="container hidden" id="salesShare">
+  <h2>Total Sales & Share</h2>
+  <p style="text-align:center; font-weight:600; margin-top:20px;">(Summary dashboard will be added here)</p>
+  <button class="btn-back" onclick="showSales()">Back</button>
+</div>
+
+<!-- BLINKIT SALES DETAIL PAGE -->
+<div class="container hidden" id="blinkit">
+  <h2>Blinkit Sales</h2>
+  <div class="filters">
+    From: <input type="date" id="startDate">
+    To: <input type="date" id="endDate">
+    <button onclick="loadBlinkitData()">Apply</button>
+  </div>
+  <button class="export-btn" onclick="exportBlinkit()">Export CSV</button>
+  <table id="blinkitTable">
     <thead></thead>
     <tbody></tbody>
+    <tfoot></tfoot>
   </table>
-  <button class="btn-back" onclick="showInventory()">Back to Warehouses</button>
+  <button class="btn-back" onclick="showSalesOverview()">Back to Overview</button>
 </div>
 
 <script>
 const API_KEY = "AIzaSyD6yREIVE1b8hq0kiYqFoJBfsLzPiGGv4k";
-const SPREADSHEET_ID = "12Hx1lGMB8dPHND7u3vqbN2itq3QHzBCIiBMkRRWbk6Y";
+const SPREADSHEET_ID = "1LJ7H8Zwy8-mM_1K0TCdke-89qfK00yQAV04OtitC45Q";
+const BLINKIT_SHEET = "Blinkit";
 
-const warehouseSheets = {
-  "Master": "Master",
-  "Mumbai": "Mumbai",
-  "Bangalore": "Bangalore",
-  "Amazon": "Amazon"
-};
+// Navigation
+function showInventory(){ hideAll(); document.getElementById("inventory").classList.remove("hidden"); }
+function showSales(){ hideAll(); document.getElementById("sales").classList.remove("hidden"); }
+function showSalesOverview(){ hideAll(); document.getElementById("salesOverview").classList.remove("hidden"); }
+function showSalesShare(){ hideAll(); document.getElementById("salesShare").classList.remove("hidden"); }
+function showBlinkit(){ hideAll(); document.getElementById("blinkit").classList.remove("hidden"); }
+function goHome(){ hideAll(); document.getElementById("home").classList.remove("hidden"); }
+function hideAll(){
+  ["home","inventory","warehouse","sales","salesOverview","salesShare","blinkit"]
+    .forEach(id=>document.getElementById(id).classList.add("hidden"));
+}
 
-async function fetchWarehouseData(sheetName) {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${sheetName}?key=${API_KEY}`;
-  const response = await fetch(url);
-  const json = await response.json();
-  const values = json.values || [];
-  if(values.length === 0) return { headers: [], data: [] };
+// Blinkit fetch
+async function fetchBlinkitData(){
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${BLINKIT_SHEET}?key=${API_KEY}`;
+  const res = await fetch(url);
+  const json = await res.json();
+  return json.values || [];
+}
+function groupBlinkitData(values, startDate, endDate){
+  if(values.length < 2) return {cities:[], data:{}};
   const headers = values[0];
-  const data = values.slice(1);
-  return { headers, data };
-}
+  const rows = values.slice(1);
+  const dateIdx = headers.indexOf("Date");
+  const productIdx = headers.indexOf("Product");
+  const qtyIdx = headers.indexOf("Qty");
+  const salesIdx = headers.indexOf("Sales");
+  const cityIdx = headers.indexOf("City");
 
-async function showWarehouse(name) {
-  const sheetName = warehouseSheets[name];
-  const { headers, data } = await fetchWarehouseData(sheetName);
-
-  // Normalize headers to safely find columns (case + spaces)
-  const normHeaders = headers.map(h => h.trim().toLowerCase());
-
-  document.getElementById("warehouseName").innerText = name + " Warehouse";
-  const syncedElem = document.getElementById("lastSynced");
-
-  // --- Find "Synced At" index using normalized headers
-  const syncedIndex = normHeaders.indexOf("synced at");
-
-  // --- LAST SYNCED under heading (dd-mm-yyyy)
-let syncedDate = "";
-if (syncedIndex !== -1 && data.length > 0) {
-  const firstValue = (data[0][syncedIndex] || "").trim();
-
-  if (firstValue.includes("/")) {
-    // Format: dd/mm/yyyy
-    const [dd, mm, yyyy] = firstValue.split("/");
-    if (dd && mm && yyyy) syncedDate = `${dd}-${mm}-${yyyy}`;
-  } else if (firstValue.includes("-")) {
-    const parts = firstValue.split("-");
-    if (parts[0].length === 4) {
-  // Format: yyyy-mm-dd (or yyyy-mm-dd hh:mm:ss)
-  const dateOnly = firstValue.substring(0, 10); // take only yyyy-mm-dd
-  const [yyyy, mm, dd] = dateOnly.split("-");
-  if (yyyy && mm && dd) syncedDate = `${dd}-${mm}-${yyyy}`;
-}
-    else if (parts[0].length === 2) {
-      // Format: dd-mm-yyyy → already fine
-      syncedDate = firstValue.substring(0, 10);
-    }
-  }
-}
-  syncedElem.innerText = "LAST SYNCED: " + (syncedDate || "N/A");
-
-  const table = document.querySelector("#warehouse table");
-  const thead = table.querySelector("thead");
-  const tbody = table.querySelector("tbody");
-
-  if (data.length === 0) {
-    thead.innerHTML = "";
-    tbody.innerHTML = `<tr><td colspan="${headers.length}">No data available</td></tr>`;
-    return;
-  }
-
-  // --- Build headers: remove "Synced At"; add "Days to Stockout" except for Master
-  const displayHeaders = headers.filter((_, i) => i !== syncedIndex);
-  if (name !== "Master") {
-    displayHeaders.push("Days to Stockout");
-  }
-  thead.innerHTML = "<tr>" + displayHeaders.map(h => `<th>${h}</th>`).join("") + "</tr>";
-
-  // --- Build rows
-  tbody.innerHTML = "";
-  data.forEach(row => {
-    // Remove "Synced At" cell using the same index
-    const displayRow = row.filter((_, i) => i !== syncedIndex);
-
-    let daysStockout = "N/A";
-    if (name !== "Master") {
-      try {
-        const availableIndex = normHeaders.indexOf("available");
-        const last30Index = normHeaders.indexOf("last 30 days sale");
-        const totalInvIndex = normHeaders.indexOf("total inventory");
-
-        let baseQty = 0;
-        if (name === "Amazon" && totalInvIndex !== -1) {
-          baseQty = parseFloat(String(row[totalInvIndex] || "0").replace(/,/g, ""));
-        } else if (availableIndex !== -1) {
-          baseQty = parseFloat(String(row[availableIndex] || "0").replace(/,/g, ""));
-        }
-
-        const last30 = (last30Index !== -1) ? parseFloat(String(row[last30Index] || "0").replace(/,/g, "")) : 0;
-
-        if (last30 > 0) {
-          daysStockout = Math.round((baseQty * 30) / last30);
-        }
-      } catch (e) {
-        console.error("Stockout calc error", e);
-      }
-
-      // Append Days to Stockout cell only for non-Master
-      displayRow.push(daysStockout);
-    }
-
-    // Render row (apply red color for low days where applicable)
-    let rowHTML = "<tr>";
-    displayRow.forEach((cell, idx) => {
-      if (name !== "Master" && idx === displayRow.length - 1 && daysStockout !== "N/A") {
-        const threshold = (name === "Amazon") ? 20 : 10;
-        const color = (parseFloat(daysStockout) < threshold) ? "#FF4D4F" : "#333";
-        rowHTML += `<td style="color:${color}; font-weight:600;">${cell}</td>`;
-      } else {
-        rowHTML += `<td>${cell}</td>`;
-      }
-    });
-    rowHTML += "</tr>";
-    tbody.innerHTML += rowHTML;
+  const filtered = rows.filter(r=>{
+    const d = new Date(r[dateIdx]);
+    return (!startDate || d >= startDate) && (!endDate || d <= endDate);
   });
 
-  // Switch to detail page
-  document.getElementById("home").classList.add("hidden");
-  document.getElementById("inventory").classList.add("hidden");
-  document.getElementById("warehouse").classList.remove("hidden");
-}
-
-function showInventory(){
-  document.getElementById("home").classList.add("hidden");
-  document.getElementById("inventory").classList.remove("hidden");
-  document.getElementById("warehouse").classList.add("hidden");
-}
-
-function goHome(){
-  document.getElementById("home").classList.remove("hidden");
-  document.getElementById("inventory").classList.add("hidden");
-  document.getElementById("warehouse").classList.add("hidden");
-}
-</script>
-
-<script>
-if(window.matchMedia('(display-mode: standalone)').matches){
-  document.querySelectorAll("a").forEach(link=>{
-    link.addEventListener("click",e=>{
-      const url = link.getAttribute("href");
-      if(url && !url.startsWith("http")){
-        e.preventDefault();
-        window.location.href = url;
-      }
-    });
+  const grouped = {};
+  const cities = new Set();
+  filtered.forEach(r=>{
+    const product = r[productIdx];
+    const qty = parseFloat(r[qtyIdx]||0);
+    const sales = parseFloat(r[salesIdx]||0);
+    const city = r[cityIdx];
+    cities.add(city);
+    if(!grouped[product]) grouped[product]={qty:0,sales:0,byCity:{}};
+    grouped[product].qty+=qty;
+    grouped[product].sales+=sales;
+    grouped[product].byCity[city]=(grouped[product].byCity[city]||0)+qty;
   });
+  return {cities:[...cities], data:grouped};
+}
+async function loadBlinkitData(){
+  const start=document.getElementById("startDate").value;
+  const end=document.getElementById("endDate").value;
+  const startDate=start?new Date(start):null;
+  const endDate=end?new Date(end):null;
+
+  const values=await fetchBlinkitData();
+  const {cities,data}=groupBlinkitData(values,startDate,endDate);
+
+  const table=document.getElementById("blinkitTable");
+  const thead=table.querySelector("thead");
+  const tbody=table.querySelector("tbody");
+  const tfoot=table.querySelector("tfoot");
+
+  let headerHTML="<tr><th>Product</th><th>Qty</th><th>Gross Sales</th>";
+  cities.forEach(c=> headerHTML+=`<th>${c}</th>`);
+  headerHTML+="</tr>";
+  thead.innerHTML=headerHTML;
+
+  let bodyHTML=""; let totalQty=0,totalSales=0; const cityTotals={};
+  for(const [product,obj] of Object.entries(data)){
+    totalQty+=obj.qty; totalSales+=obj.sales;
+    let row=`<tr><td>${product}</td><td>${obj.qty}</td><td>${obj.sales.toFixed(2)}</td>`;
+    cities.forEach(c=>{
+      const val=obj.byCity[c]||0;
+      row+=`<td>${val}</td>`;
+      cityTotals[c]=(cityTotals[c]||0)+val;
+    });
+    row+="</tr>";
+    bodyHTML+=row;
+  }
+  tbody.innerHTML=bodyHTML;
+
+  let footHTML=`<tr><td><b>TOTAL</b></td><td><b>${totalQty}</b></td><td><b>${totalSales.toFixed(2)}</b></td>`;
+  cities.forEach(c=> footHTML+=`<td><b>${cityTotals[c]||0}</b></td>`);
+  footHTML+="</tr>";
+  tfoot.innerHTML=footHTML;
+}
+function exportBlinkit(){
+  const table=document.getElementById("blinkitTable");
+  let csv=""; const rows=table.querySelectorAll("tr");
+  rows.forEach(row=>{
+    const cols=row.querySelectorAll("th,td");
+    const arr=[]; cols.forEach(c=>arr.push(`"${c.innerText}"`));
+    csv+=arr.join(",")+"\n";
+  });
+  const blob=new Blob([csv],{type:"text/csv"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download="blinkit_sales.csv"; a.click();
+  URL.revokeObjectURL(url);
 }
 </script>
 </body>
 </html>
-
-
