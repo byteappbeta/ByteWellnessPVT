@@ -109,10 +109,12 @@ if (syncedIndex !== -1 && data.length > 0) {
   } else if (firstValue.includes("-")) {
     const parts = firstValue.split("-");
     if (parts[0].length === 4) {
-      // Format: yyyy-mm-dd (or yyyy-mm-dd hh:mm:ss)
-      const [yyyy, mm, dd] = parts;
-      if (yyyy && mm && dd) syncedDate = `${dd}-${mm}-${yyyy}`;
-    } else if (parts[0].length === 2) {
+  // Format: yyyy-mm-dd (or yyyy-mm-dd hh:mm:ss)
+  const dateOnly = firstValue.substring(0, 10); // take only yyyy-mm-dd
+  const [yyyy, mm, dd] = dateOnly.split("-");
+  if (yyyy && mm && dd) syncedDate = `${dd}-${mm}-${yyyy}`;
+}
+    else if (parts[0].length === 2) {
       // Format: dd-mm-yyyy → already fine
       syncedDate = firstValue.substring(0, 10);
     }
@@ -219,4 +221,5 @@ if(window.matchMedia('(display-mode: standalone)').matches){
 </script>
 </body>
 </html>
+
 
