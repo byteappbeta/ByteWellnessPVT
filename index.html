@@ -88,21 +88,22 @@ async function showWarehouse(name) {
   const sheetName = warehouseSheets[name];
   const { headers, data } = await fetchWarehouseData(sheetName);
 
+  // Normalize headers to safely find columns (case + spaces)
   const normHeaders = headers.map(h => h.trim().toLowerCase());
 
   document.getElementById("warehouseName").innerText = name + " Warehouse";
   const syncedElem = document.getElementById("lastSynced");
 
-  // --- Handle Last Synced ---
+  // --- Find "Synced At" index using normalized headers
   const syncedIndex = normHeaders.indexOf("synced at");
+
+  // --- LAST SYNCED under heading (dd-mm-yyyy)
   let syncedDate = "";
   if (syncedIndex !== -1 && data.length > 0) {
-    const firstValue = data[0][syncedIndex];
-    if (firstValue) {
-      const datePart = firstValue.substring(0, 10); // yyyy-mm-dd
-      const [yyyy, mm, dd] = datePart.split("-");
-      if (yyyy && mm && dd) syncedDate = `${dd}-${mm}-${yyyy}`;
-    }
+    const firstValue = data[0][syncedIndex] || "";
+    const datePart = firstValue.substring(0, 10); // e.g., "2025-10-01"
+    const [yyyy, mm, dd] = datePart.split("-");
+    if (yyyy && mm && dd) syncedDate = `${dd}-${mm}-${yyyy}`;
   }
   syncedElem.innerText = "LAST SYNCED: " + (syncedDate || "N/A");
 
@@ -116,16 +117,17 @@ async function showWarehouse(name) {
     return;
   }
 
-  // --- Headers ---
+  // --- Build headers: remove "Synced At"; add "Days to Stockout" except for Master
   const displayHeaders = headers.filter((_, i) => i !== syncedIndex);
   if (name !== "Master") {
     displayHeaders.push("Days to Stockout");
   }
   thead.innerHTML = "<tr>" + displayHeaders.map(h => `<th>${h}</th>`).join("") + "</tr>";
 
-  // --- Build rows ---
+  // --- Build rows
   tbody.innerHTML = "";
   data.forEach(row => {
+    // Remove "Synced At" cell using the same index
     const displayRow = row.filter((_, i) => i !== syncedIndex);
 
     let daysStockout = "N/A";
@@ -133,33 +135,34 @@ async function showWarehouse(name) {
       try {
         const availableIndex = normHeaders.indexOf("available");
         const last30Index = normHeaders.indexOf("last 30 days sale");
-        const totalInventoryIndex = normHeaders.indexOf("total inventory");
+        const totalInvIndex = normHeaders.indexOf("total inventory");
 
-        let available = 0;
-        if (name === "Amazon" && totalInventoryIndex !== -1) {
-          available = parseFloat((row[totalInventoryIndex] || "0").replace(/,/g, ""));
+        let baseQty = 0;
+        if (name === "Amazon" && totalInvIndex !== -1) {
+          baseQty = parseFloat(String(row[totalInvIndex] || "0").replace(/,/g, ""));
         } else if (availableIndex !== -1) {
-          available = parseFloat((row[availableIndex] || "0").replace(/,/g, ""));
+          baseQty = parseFloat(String(row[availableIndex] || "0").replace(/,/g, ""));
         }
 
-        const last30 = (last30Index !== -1) ? parseFloat((row[last30Index] || "0").replace(/,/g, "")) : 0;
+        const last30 = (last30Index !== -1) ? parseFloat(String(row[last30Index] || "0").replace(/,/g, "")) : 0;
 
         if (last30 > 0) {
-          daysStockout = Math.round((available * 30) / last30);
+          daysStockout = Math.round((baseQty * 30) / last30);
         }
       } catch (e) {
         console.error("Stockout calc error", e);
       }
 
+      // Append Days to Stockout cell only for non-Master
       displayRow.push(daysStockout);
     }
 
-    // Render row
+    // Render row (apply red color for low days where applicable)
     let rowHTML = "<tr>";
     displayRow.forEach((cell, idx) => {
       if (name !== "Master" && idx === displayRow.length - 1 && daysStockout !== "N/A") {
-        let threshold = (name === "Amazon") ? 20 : 10;
-        let color = (parseFloat(daysStockout) < threshold) ? "#FF4D4F" : "#333";
+        const threshold = (name === "Amazon") ? 20 : 10;
+        const color = (parseFloat(daysStockout) < threshold) ? "#FF4D4F" : "#333";
         rowHTML += `<td style="color:${color}; font-weight:600;">${cell}</td>`;
       } else {
         rowHTML += `<td>${cell}</td>`;
@@ -169,7 +172,7 @@ async function showWarehouse(name) {
     tbody.innerHTML += rowHTML;
   });
 
-  // Switch page
+  // Switch to detail page
   document.getElementById("home").classList.add("hidden");
   document.getElementById("inventory").classList.add("hidden");
   document.getElementById("warehouse").classList.remove("hidden");
@@ -192,7 +195,7 @@ function goHome(){
 if(window.matchMedia('(display-mode: standalone)').matches){
   document.querySelectorAll("a").forEach(link=>{
     link.addEventListener("click",e=>{
-      let url = link.getAttribute("href");
+      const url = link.getAttribute("href");
       if(url && !url.startsWith("http")){
         e.preventDefault();
         window.location.href = url;
