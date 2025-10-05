@@ -98,13 +98,26 @@ async function showWarehouse(name) {
   const syncedIndex = normHeaders.indexOf("synced at");
 
   // --- LAST SYNCED under heading (dd-mm-yyyy)
-  let syncedDate = "";
-  if (syncedIndex !== -1 && data.length > 0) {
-    const firstValue = data[0][syncedIndex] || "";
-    const datePart = firstValue.substring(0, 10); // e.g., "2025-10-01"
-    const [yyyy, mm, dd] = datePart.split("-");
-    if (yyyy && mm && dd) syncedDate = `${dd}-${mm}-${yyyy}`;
+let syncedDate = "";
+if (syncedIndex !== -1 && data.length > 0) {
+  const firstValue = (data[0][syncedIndex] || "").trim();
+
+  if (firstValue.includes("/")) {
+    // Format: dd/mm/yyyy
+    const [dd, mm, yyyy] = firstValue.split("/");
+    if (dd && mm && yyyy) syncedDate = `${dd}-${mm}-${yyyy}`;
+  } else if (firstValue.includes("-")) {
+    const parts = firstValue.split("-");
+    if (parts[0].length === 4) {
+      // Format: yyyy-mm-dd (or yyyy-mm-dd hh:mm:ss)
+      const [yyyy, mm, dd] = parts;
+      if (yyyy && mm && dd) syncedDate = `${dd}-${mm}-${yyyy}`;
+    } else if (parts[0].length === 2) {
+      // Format: dd-mm-yyyy → already fine
+      syncedDate = firstValue.substring(0, 10);
+    }
   }
+}
   syncedElem.innerText = "LAST SYNCED: " + (syncedDate || "N/A");
 
   const table = document.querySelector("#warehouse table");
@@ -206,3 +219,4 @@ if(window.matchMedia('(display-mode: standalone)').matches){
 </script>
 </body>
 </html>
+
