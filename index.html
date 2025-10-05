@@ -5,47 +5,32 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root{
-      --brand:#1C39BB;
-      --bg:#f5f7fa;
-      --text:#333;
-    }
-    *{box-sizing:border-box}
-    body { font-family: 'Montserrat', sans-serif; margin:0; padding:0; background:var(--bg); color:var(--text); }
-    header { position:sticky; top:0; z-index:10; background:var(--brand); color:white; text-align:center; padding:22px 16px; font-size:28px; font-weight:800; text-transform:uppercase; }
-    .container { max-width:1100px; margin:18px auto 40px; padding:0 18px; }
-    .card-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:22px; margin-top:22px; }
-    .card { background:white; padding:28px 22px; border-radius:14px; box-shadow:0 6px 20px rgba(0,0,0,0.08); text-align:center; font-weight:700; font-size:18px; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; text-transform:uppercase; }
-    .card:hover { transform:translateY(-4px); box-shadow:0 10px 24px rgba(0,0,0,0.12); }
-    .btn { display:inline-block; margin-top:22px; padding:12px 20px; background:var(--brand); color:white; font-size:14px; font-weight:800; border:none; border-radius:10px; cursor:pointer; transition:.2s; text-transform:uppercase; }
+    body { font-family: 'Montserrat', sans-serif; margin:0; padding:0; background:#f5f7fa; color:#333; }
+    header { background:#1C39BB; color:white; text-align:center; padding:30px; font-size:36px; font-weight:800; text-transform:uppercase; }
+    .container { max-width:1000px; margin:20px auto; padding:0 20px; }
+    .card-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:25px; margin-top:25px; }
+    .card { background:white; padding:35px 25px; border-radius:15px; box-shadow:0 6px 20px rgba(0,0,0,0.1); text-align:center; font-weight:600; font-size:22px; cursor:pointer; transition:0.2s; text-transform:uppercase; }
+    .card:hover { transform:translateY(-6px); box-shadow:0 10px 25px rgba(0,0,0,0.15); }
+    .btn { display:inline-block; margin-top:30px; padding:14px 28px; background:#1C39BB; color:white; font-size:16px; font-weight:700; border:none; border-radius:10px; cursor:pointer; transition:0.3s; text-transform:uppercase; }
     .btn:hover { background:#162f94; }
-    h2 { font-weight:800; text-align:center; margin:10px 0 4px; color:var(--brand); text-transform:uppercase; font-size:20px; letter-spacing:.5px; }
-    .sub { text-align:center; font-size:12px; opacity:.7; margin-bottom:8px; text-transform:uppercase; }
-    table { width:100%; border-collapse:collapse; background:white; border-radius:12px; overflow:auto; box-shadow:0 5px 18px rgba(0,0,0,0.08); font-weight:500; font-size:14px; margin-top:18px; }
-    th { background:var(--brand); color:white; padding:12px; text-transform:uppercase; letter-spacing:.5px; position:sticky; top:0; }
-    td { padding:12px; border-bottom:1px solid #eee; text-align:center; }
-    tr:hover td { background:#f7f9ff; }
+    h2 { font-weight:700; text-align:center; margin-top:20px; color:#1C39BB; text-transform:uppercase; }
+    table { width:100%; border-collapse:collapse; background:white; border-radius:12px; overflow:hidden; box-shadow:0 5px 20px rgba(0,0,0,0.1); text-align:center; font-weight:500; font-size:16px; margin-top:25px; }
+    th { background:#1C39BB; color:white; padding:14px; text-transform:uppercase; letter-spacing:1px; }
+    td { padding:14px; border-bottom:1px solid #ddd; text-align:center; }
+    tr:hover { background:#f1f1f1; }
     .hidden { display:none; }
-    .filters { text-align:center; margin:14px 0 6px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
-    .filters input[type="date"] { padding:8px 10px; font-size:14px; border:1px solid #ddd; border-radius:8px; }
-    .filters .btn-apply { padding:9px 14px; font-size:13px; border-radius:8px; }
-    .export-btn { margin:8px 0 0; padding:10px 16px; background:var(--brand); color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700; font-size:13px; }
+    #lastSynced { text-align:center; font-weight:700; margin-bottom:10px; text-transform:uppercase; }
+    .filters { text-align:center; margin-top:20px; }
+    .filters input { margin:0 10px; padding:8px; font-size:14px; }
+    .export-btn { margin-top:15px; padding:10px 20px; background:#1C39BB; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600; }
     .export-btn:hover { background:#162f94; }
-    tfoot td { font-weight:800; background:#f0f3ff; }
+    tfoot td { font-weight:700; background:#f0f0f0; }
     /* Channel colors */
-    .amazon { background:#FF9900; color:#231f20; }
-    .shopify { background:#96BF48; color:#0f3d0f; }
-    .flipkart { background:#2874F0; color:#fff; }
-    .blinkit { background:#F7E415; color:#222; }
-    /* Helper */
-    .muted { opacity:.7; font-weight:600; }
+    .amazon { background:#FF9900; color:white; }
+    .shopify { background:#96BF48; color:white; }
+    .flipkart { background:#2874F0; color:white; }
+    .blinkit { background:#F7E415; color:#333; }
   </style>
-
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#000000">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
 <header>BYTE WELLNESS PVT</header>
@@ -73,7 +58,7 @@
 <!-- WAREHOUSE DETAIL PAGE -->
 <div class="container hidden" id="warehouse">
   <h2 id="warehouseName"></h2>
-  <div id="lastSynced" class="sub"></div>
+  <div id="lastSynced"></div>
   <table>
     <thead></thead>
     <tbody></tbody>
@@ -95,7 +80,7 @@
 <div class="container hidden" id="salesOverview">
   <h2>Sales Overview</h2>
   <div class="card-grid">
-    <div class="card amazon"  onclick="alert('Amazon sales page coming soon')">Amazon</div>
+    <div class="card amazon" onclick="alert('Amazon sales page coming soon')">Amazon</div>
     <div class="card shopify" onclick="alert('Shopify sales page coming soon')">Shopify</div>
     <div class="card flipkart" onclick="alert('Flipkart sales page coming soon')">Flipkart</div>
     <div class="card blinkit" onclick="showSection('blinkit')">Blinkit</div>
@@ -103,22 +88,20 @@
   <button class="btn" onclick="showSection('sales')">Back</button>
 </div>
 
-<!-- SALES SHARE (placeholder for now) -->
+<!-- SALES SHARE -->
 <div class="container hidden" id="salesShare">
   <h2>Total Sales & Share</h2>
-  <p class="sub">Summary dashboard will be added here.</p>
+  <p style="text-align:center; font-weight:600; margin-top:20px;">(Summary dashboard will be added here)</p>
   <button class="btn" onclick="showSection('sales')">Back</button>
 </div>
 
-<!-- BLINKIT SALES DETAIL PAGE -->
+<!-- BLINKIT SALES -->
 <div class="container hidden" id="blinkit">
   <h2>Blinkit Sales</h2>
   <div class="filters">
-    <span class="muted">From</span>
-    <input type="date" id="startDate">
-    <span class="muted">To</span>
-    <input type="date" id="endDate">
-    <button class="btn btn-apply" onclick="loadBlinkitData()">Apply</button>
+    From: <input type="date" id="startDate">
+    To: <input type="date" id="endDate">
+    <button class="btn" onclick="loadBlinkitData()">Apply</button>
   </div>
   <button class="export-btn" onclick="exportBlinkit()">Export CSV</button>
   <table id="blinkitTable">
@@ -130,12 +113,13 @@
 </div>
 
 <script>
-/* ====== CONFIG (kept from your original) ====== */
+/* ====== CONFIG ====== */
 const API_KEY = "AIzaSyD6yREIVE1b8hq0kiYqFoJBfsLzPiGGv4k";
-const SPREADSHEET_ID = "1LJ7H8Zwy8-mM_1K0TCdke-89qfK00yQAV04OtitC45Q";
-const BLINKIT_SHEET = "Blinkit";
+const WAREHOUSE_SHEET_ID = "12Hx1lGMB8dPHND7u3vqbN2itq3QHzBCIiBMkRRWbk6Y";
+const BLINKIT_SHEET_ID   = "1LJ7H8Zwy8-mM_1K0TCdke-89qfK00yQAV04OtitC45Q";
+const BLINKIT_SHEET = "Blinkit"; // must match exact tab name in Blinkit sheet
 
-/* ====== INVENTORY (your original logic, intact) ====== */
+/* ====== INVENTORY ====== */
 const warehouseSheets = {
   "Master": "Master",
   "Mumbai": "Mumbai",
@@ -144,7 +128,7 @@ const warehouseSheets = {
 };
 
 async function fetchWarehouseData(sheetName) {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(sheetName)}?key=${API_KEY}`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${WAREHOUSE_SHEET_ID}/values/${encodeURIComponent(sheetName)}?key=${API_KEY}`;
   const response = await fetch(url);
   const json = await response.json();
   const values = json.values || [];
@@ -155,18 +139,15 @@ async function fetchWarehouseData(sheetName) {
 }
 
 async function showWarehouse(name) {
-  showSection('warehouse'); // Ensure screen won't go blank first
+  showSection('warehouse');
   const sheetName = warehouseSheets[name];
   const { headers, data } = await fetchWarehouseData(sheetName);
-
   const normHeaders = headers.map(h => (h||"").trim().toLowerCase());
 
   document.getElementById("warehouseName").innerText = name + " Warehouse";
   const syncedElem = document.getElementById("lastSynced");
 
   const syncedIndex = normHeaders.indexOf("synced at");
-
-  // LAST SYNCED (dd-mm-yyyy)
   let syncedDate = "";
   if (syncedIndex !== -1 && data.length > 0) {
     const firstValue = (data[0][syncedIndex] || "").trim();
@@ -175,13 +156,10 @@ async function showWarehouse(name) {
       if (dd && mm && yyyy) syncedDate = `${dd}-${mm}-${yyyy}`;
     } else if (firstValue.includes("-")) {
       const parts = firstValue.split("-");
-      if (parts[0].length === 4) { // yyyy-mm-dd
-        const dateOnly = firstValue.substring(0, 10);
-        const [yyyy, mm, dd] = dateOnly.split("-");
-        if (yyyy && mm && dd) syncedDate = `${dd}-${mm}-${yyyy}`;
-      } else if (parts[0].length === 2) {
-        syncedDate = firstValue.substring(0, 10);
-      }
+      if (parts[0].length === 4) {
+        const [yyyy, mm, dd] = firstValue.substring(0, 10).split("-");
+        syncedDate = `${dd}-${mm}-${yyyy}`;
+      } else syncedDate = firstValue.substring(0, 10);
     }
   }
   syncedElem.innerText = "LAST SYNCED: " + (syncedDate || "N/A");
@@ -196,43 +174,38 @@ async function showWarehouse(name) {
     return;
   }
 
-  const syncedIndexSafe = Math.max(-1, syncedIndex);
-  const displayHeaders = headers.filter((_, i) => i !== syncedIndexSafe);
+  const displayHeaders = headers.filter((_, i) => i !== syncedIndex);
   if (name !== "Master") displayHeaders.push("Days to Stockout");
   thead.innerHTML = "<tr>" + displayHeaders.map(h => `<th>${h}</th>`).join("") + "</tr>";
 
   tbody.innerHTML = "";
   data.forEach(row => {
-    const displayRow = row.filter((_, i) => i !== syncedIndexSafe);
+    const displayRow = row.filter((_, i) => i !== syncedIndex);
     let daysStockout = "N/A";
     if (name !== "Master") {
       try {
         const availableIndex = normHeaders.indexOf("available");
         const last30Index = normHeaders.indexOf("last 30 days sale");
         const totalInvIndex = normHeaders.indexOf("total inventory");
-
         let baseQty = 0;
         if (name === "Amazon" && totalInvIndex !== -1) {
-          baseQty = parseFloat(String(row[totalInvIndex] || "0").replace(/,/g, ""));
+          baseQty = parseFloat((row[totalInvIndex]||"0").replace(/,/g,""));
         } else if (availableIndex !== -1) {
-          baseQty = parseFloat(String(row[availableIndex] || "0").replace(/,/g, ""));
+          baseQty = parseFloat((row[availableIndex]||"0").replace(/,/g,""));
         }
-        const last30 = (last30Index !== -1) ? parseFloat(String(row[last30Index] || "0").replace(/,/g, "")) : 0;
-        if (!isNaN(baseQty) && last30 > 0) {
-          daysStockout = Math.round((baseQty * 30) / last30);
-        }
-      } catch (e) { console.error("Stockout calc error", e); }
+        const last30 = last30Index !== -1 ? parseFloat((row[last30Index]||"0").replace(/,/g,"")) : 0;
+        if (last30 > 0) daysStockout = Math.round((baseQty * 30) / last30);
+      } catch {}
       displayRow.push(daysStockout);
     }
-
     let rowHTML = "<tr>";
     displayRow.forEach((cell, idx) => {
       if (name !== "Master" && idx === displayRow.length - 1 && daysStockout !== "N/A") {
         const threshold = (name === "Amazon") ? 20 : 10;
         const color = (parseFloat(daysStockout) < threshold) ? "#FF4D4F" : "#333";
-        rowHTML += `<td style="color:${color}; font-weight:700;">${cell}</td>`;
+        rowHTML += `<td style="color:${color}; font-weight:600;">${cell}</td>`;
       } else {
-        rowHTML += `<td>${cell ?? ""}</td>`;
+        rowHTML += `<td>${cell||""}</td>`;
       }
     });
     rowHTML += "</tr>";
@@ -240,180 +213,96 @@ async function showWarehouse(name) {
   });
 }
 
-/* ====== SALES: Blinkit (API + dynamic table) ====== */
-function parseSheetDate(val){
-  // Handles yyyy-mm-dd, dd/mm/yyyy, dd-mm-yyyy
-  if(!val) return null;
-  const s = String(val).trim();
-  // yyyy-mm-dd or yyyy-mm-dd hh:mm:ss
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(s.substring(0,10));
-  // dd/mm/yyyy
-  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) {
-    const [dd, mm, yyyy] = s.split("/");
-    return new Date(Number(yyyy), Number(mm)-1, Number(dd));
-  }
-  // dd-mm-yyyy
-  if (/^\d{1,2}-\d{1,2}-\d{4}$/.test(s)) {
-    const [dd, mm, yyyy] = s.split("-");
-    return new Date(Number(yyyy), Number(mm)-1, Number(dd));
-  }
-  // Fallback: Date() try
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
-}
-
+/* ====== BLINKIT ====== */
 async function fetchBlinkitData(){
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(BLINKIT_SHEET)}?key=${API_KEY}`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${BLINKIT_SHEET_ID}/values/${encodeURIComponent(BLINKIT_SHEET)}?key=${API_KEY}`;
   const res = await fetch(url);
   const json = await res.json();
   return json.values || [];
 }
-
-function groupBlinkitData(values, startDate, endDate){
-  if(values.length < 2) return {cities:[], rows:[]};
+function groupBlinkitData(values,startDate,endDate){
+  if(values.length < 2) return {cities:[], data:{}};
   const headers = values[0];
   const rows = values.slice(1);
+  const dateIdx = headers.indexOf("Date");
+  const productIdx = headers.indexOf("Product");
+  const qtyIdx = headers.indexOf("Qty");
+  const salesIdx = headers.indexOf("Sales");
+  const cityIdx = headers.indexOf("City");
 
-  const idx = {
-    date: headers.indexOf("Date"),
-    product: headers.indexOf("Product"),
-    qty: headers.indexOf("Qty"),
-    sales: headers.indexOf("Sales"),
-    city: headers.indexOf("City"),
-  };
-
-  const byProduct = {};
-  const cities = new Set();
-
+  const grouped = {}; const cities = new Set();
   rows.forEach(r=>{
-    const d = parseSheetDate(r[idx.date]);
-    if(!d) return;
-    if (startDate && d < startDate) return;
-    if (endDate && d > new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23,59,59,999)) return;
-
-    const product = r[idx.product] || "";
-    const qty = parseFloat(r[idx.qty] || 0) || 0;
-    const sales = parseFloat(r[idx.sales] || 0) || 0;
-    const city = r[idx.city] || "Unknown";
-
+    if(!r[dateIdx]) return;
+    const d = new Date(r[dateIdx]);
+    if(startDate && d < startDate) return;
+    if(endDate && d > endDate) return;
+    const product = r[productIdx]; const qty = parseFloat(r[qtyIdx]||0);
+    const sales = parseFloat(r[salesIdx]||0); const city = r[cityIdx];
     cities.add(city);
-    if(!byProduct[product]) byProduct[product] = { qty:0, sales:0, byCity:{} };
-    byProduct[product].qty += qty;
-    byProduct[product].sales += sales;
-    byProduct[product].byCity[city] = (byProduct[product].byCity[city] || 0) + qty;
+    if(!grouped[product]) grouped[product] = {qty:0,sales:0,byCity:{}};
+    grouped[product].qty += qty;
+    grouped[product].sales += sales;
+    grouped[product].byCity[city] = (grouped[product].byCity[city]||0)+qty;
   });
-
-  return { cities: Array.from(cities), data: byProduct };
+  return {cities:[...cities], data:grouped};
 }
-
 async function loadBlinkitData(){
-  try{
-    const start = document.getElementById("startDate").value;
-    const end = document.getElementById("endDate").value;
-    const startDate = start ? new Date(start) : null;
-    const endDate = end ? new Date(end) : null;
+  const start = document.getElementById("startDate").value;
+  const end = document.getElementById("endDate").value;
+  const startDate = start?new Date(start):null;
+  const endDate = end?new Date(end):null;
+  const values = await fetchBlinkitData();
+  const {cities,data} = groupBlinkitData(values,startDate,endDate);
 
-    const values = await fetchBlinkitData();
-    const {cities, data} = groupBlinkitData(values, startDate, endDate);
-
-    const table = document.getElementById("blinkitTable");
-    const thead = table.querySelector("thead");
-    const tbody = table.querySelector("tbody");
-    const tfoot = table.querySelector("tfoot");
-
-    // Build header
-    let headerHTML = "<tr><th>Product</th><th>Qty</th><th>Gross Sales</th>";
-    cities.forEach(c => headerHTML += `<th>${c}</th>`);
-    headerHTML += "</tr>";
-    thead.innerHTML = headerHTML;
-
-    // Build body
-    tbody.innerHTML = "";
-    let totalQty = 0, totalSales = 0;
-    const cityTotals = {};
-    const products = Object.keys(data).sort((a,b)=>a.localeCompare(b));
-    products.forEach(product=>{
-      const obj = data[product];
-      totalQty += obj.qty;
-      totalSales += obj.sales;
-      let row = `<tr><td>${product}</td><td>${obj.qty}</td><td>${obj.sales.toFixed(2)}</td>`;
-      cities.forEach(c=>{
-        const val = obj.byCity[c] || 0;
-        row += `<td>${val}</td>`;
-        cityTotals[c] = (cityTotals[c] || 0) + val;
-      });
-      row += "</tr>";
-      tbody.insertAdjacentHTML("beforeend", row);
-    });
-
-    // Totals
-    let footHTML = `<tr><td><b>TOTAL</b></td><td><b>${totalQty}</b></td><td><b>${totalSales.toFixed(2)}</b></td>`;
-    cities.forEach(c => footHTML += `<td><b>${cityTotals[c]||0}</b></td>`);
-    footHTML += "</tr>";
-    tfoot.innerHTML = footHTML;
-
-  }catch(err){
-    console.error("Blinkit load error:", err);
-    alert("Could not load Blinkit data. Check browser console for details.");
-  }
-}
-
-function exportBlinkit(){
   const table = document.getElementById("blinkitTable");
-  if(!table) return;
-  let csv = "";
-  const rows = table.querySelectorAll("tr");
+  const thead = table.querySelector("thead");
+  const tbody = table.querySelector("tbody");
+  const tfoot = table.querySelector("tfoot");
+
+  let headerHTML="<tr><th>Product</th><th>Qty</th><th>Gross Sales</th>";
+  cities.forEach(c=> headerHTML+=`<th>${c}</th>`);
+  headerHTML+="</tr>";
+  thead.innerHTML=headerHTML;
+
+  let bodyHTML=""; let totalQty=0,totalSales=0; const cityTotals={};
+  for(const [product,obj] of Object.entries(data)){
+    totalQty+=obj.qty; totalSales+=obj.sales;
+    let row=`<tr><td>${product}</td><td>${obj.qty}</td><td>${obj.sales.toFixed(2)}</td>`;
+    cities.forEach(c=>{
+      const val=obj.byCity[c]||0;
+      row+=`<td>${val}</td>`;
+      cityTotals[c]=(cityTotals[c]||0)+val;
+    });
+    row+="</tr>";
+    bodyHTML+=row;
+  }
+  tbody.innerHTML=bodyHTML;
+
+  let footHTML=`<tr><td><b>TOTAL</b></td><td><b>${totalQty}</b></td><td><b>${totalSales.toFixed(2)}</b></td>`;
+  cities.forEach(c=> footHTML+=`<td><b>${cityTotals[c]||0}</b></td>`);
+  footHTML+="</tr>";
+  tfoot.innerHTML=footHTML;
+}
+function exportBlinkit(){
+  const table=document.getElementById("blinkitTable");
+  let csv=""; const rows=table.querySelectorAll("tr");
   rows.forEach(row=>{
-    const cols = row.querySelectorAll("th,td");
-    const arr = [];
-    cols.forEach(c => arr.push(`"${(c.innerText||"").replace(/"/g,'""')}"`));
-    csv += arr.join(",") + "\n";
+    const cols=row.querySelectorAll("th,td");
+    const arr=[]; cols.forEach(c=>arr.push(`"${c.innerText}"`));
+    csv+=arr.join(",")+"\n";
   });
-  const blob = new Blob([csv], {type:"text/csv"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = "blinkit_sales.csv"; a.click();
+  const blob=new Blob([csv],{type:"text/csv"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download="blinkit_sales.csv"; a.click();
   URL.revokeObjectURL(url);
 }
 
-/* ====== NAVIGATION (robust) ====== */
-const SECTIONS = ["home","inventory","warehouse","sales","salesOverview","salesShare","blinkit"];
+/* ====== NAVIGATION ====== */
+const SECTIONS=["home","inventory","warehouse","sales","salesOverview","salesShare","blinkit"];
 function showSection(id){
-  // Hide all known sections
-  SECTIONS.forEach(s=>{
-    const el = document.getElementById(s);
-    if(el) el.classList.add("hidden");
-  });
-  // Show the requested one (fallback to home if missing)
-  const target = document.getElementById(id) || document.getElementById("home");
-  target.classList.remove("hidden");
-}
-
-// Optional: default some dates for Blinkit (current month)
-document.addEventListener("DOMContentLoaded", ()=>{
-  const now = new Date();
-  const first = new Date(now.getFullYear(), now.getMonth(), 1);
-  const sd = document.getElementById("startDate");
-  const ed = document.getElementById("endDate");
-  if(sd) sd.value = first.toISOString().slice(0,10);
-  if(ed) ed.value = now.toISOString().slice(0,10);
-});
-</script>
-
-<!-- (Optional) PWA-safe internal link handling from your original -->
-<script>
-if(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches){
-  document.querySelectorAll("a").forEach(link=>{
-    link.addEventListener("click",e=>{
-      const url = link.getAttribute("href");
-      if(url && !url.startsWith("http")){
-        e.preventDefault();
-        window.location.href = url;
-      }
-    });
-  });
+  SECTIONS.forEach(s=>document.getElementById(s).classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
 }
 </script>
 </body>
 </html>
-
