@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+
   <title>BYTE WELLNESS PVT</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -20,6 +21,7 @@
     tr:hover { background:#f1f1f1; }
     .hidden { display:none; }
   </style>
+   <title>My Inventory App</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#000000">
   <meta name="mobile-web-app-capable" content="yes">
@@ -88,19 +90,18 @@ async function showWarehouse(name) {
   const { headers, data } = await fetchWarehouseData(sheetName);
 
   document.getElementById("warehouseName").innerText = name + " Warehouse";
-
-  // Display Last Synced below heading
   const syncedElem = document.getElementById("lastSynced");
-  let syncedDate = "";
   const syncedIndex = headers.indexOf("Synced at");
-  if(syncedIndex !== -1 && data.length > 0){
+
+  // Show Last Synced date
+  let syncedDate = "";
+  if(syncedIndex !== -1 && data.length>0){
     const firstValue = data[0][syncedIndex];
     if(firstValue){
-      const dateObj = new Date(firstValue);
-      const dd = String(dateObj.getDate()).padStart(2,'0');
-      const mm = String(dateObj.getMonth()+1).padStart(2,'0');
-      const yyyy = dateObj.getFullYear();
-      syncedDate = `${dd}-${mm}-${yyyy}`;
+      // extract date part safely
+      const datePart = firstValue.split(" ")[0];
+      const parts = datePart.split("-");
+      if(parts.length===3) syncedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
     }
   }
   syncedElem.innerText = "Last Synced: " + syncedDate;
@@ -109,49 +110,51 @@ async function showWarehouse(name) {
   const thead = table.querySelector("thead");
   const tbody = table.querySelector("tbody");
 
-  if(data.length === 0){
-    thead.innerHTML = "";
-    tbody.innerHTML = `<tr><td colspan="${headers.length}">No data available</td></tr>`;
-  } else {
-    // Remove 'Synced at' column
-    const displayHeaders = headers.filter(h=>h!=="Synced at");
-    displayHeaders.push("Days to Stockout");
-    thead.innerHTML = "<tr>"+displayHeaders.map(h=>`<th>${h}</th>`).join("")+"</tr>";
-
-    tbody.innerHTML = "";
-    data.forEach(row=>{
-      const displayRow = row.filter((_,i)=>i!==syncedIndex);
-
-      // Calculate Days to Stockout
-      let daysStockout = "N/A";
-      try{
-        let available = 0;
-        let last30 = 0;
-        if(name==="Amazon"){
-          available = parseFloat(row[headers.indexOf("Total Inventory")])||0;
-        } else {
-          available = parseFloat(row[headers.indexOf("Available")])||0;
-        }
-        last30 = parseFloat(row[headers.indexOf("Last 30 days sale")])||0;
-        if(last30>0) daysStockout = ((available*30)/last30).toFixed(1);
-      }catch(e){daysStockout="N/A";}
-      displayRow.push(daysStockout);
-
-      // Build row HTML
-      let rowHTML="<tr>";
-      displayRow.forEach((cell,idx)=>{
-        if(idx===displayRow.length-1 && daysStockout!=="N/A"){
-          let threshold = (name==="Amazon")?20:10;
-          let color = (parseFloat(daysStockout)<threshold)?"#FF4D4F":"#333";
-          rowHTML+=`<td style="color:${color}; font-weight:600;">${cell}</td>`;
-        } else {
-          rowHTML+=`<td>${cell}</td>`;
-        }
-      });
-      rowHTML+="</tr>";
-      tbody.innerHTML+=rowHTML;
-    });
+  if(data.length===0){
+    thead.innerHTML="";
+    tbody.innerHTML=`<tr><td colspan="${headers.length}">No data available</td></tr>`;
+    return;
   }
+
+  // Remove Synced at column
+  const displayHeaders = headers.filter((_,i)=>i!==syncedIndex);
+  displayHeaders.push("Days to Stockout");
+  thead.innerHTML = "<tr>"+displayHeaders.map(h=>`<th>${h}</th>`).join("")+"</tr>";
+
+  tbody.innerHTML="";
+  data.forEach(row=>{
+    // Remove Synced at from row
+    const displayRow = row.filter((_,i)=>i!==syncedIndex);
+
+    // Calculate Days to Stockout
+    let daysStockout = "N/A";
+    try{
+      let available=0, last30=0;
+      const availableIndex = (name==="Amazon") ? headers.indexOf("Total Inventory") : headers.indexOf("Available");
+      const last30Index = headers.indexOf("Last 30 days sale");
+
+      if(availableIndex!==-1) available = parseFloat(row[availableIndex].toString().replace(/,/g,''))||0;
+      if(last30Index!==-1) last30 = parseFloat(row[last30Index].toString().replace(/,/g,''))||0;
+
+      if(last30>0) daysStockout = ((available*30)/last30).toFixed(1);
+    }catch(e){daysStockout="N/A";}
+
+    displayRow.push(daysStockout);
+
+    // Build row HTML
+    let rowHTML="<tr>";
+    displayRow.forEach((cell,idx)=>{
+      if(idx===displayRow.length-1 && daysStockout!=="N/A"){
+        let threshold = (name==="Amazon")?20:10;
+        let color = (parseFloat(daysStockout)<threshold)?"#FF4D4F":"#333";
+        rowHTML+=`<td style="color:${color}; font-weight:600;">${cell}</td>`;
+      } else {
+        rowHTML+=`<td>${cell}</td>`;
+      }
+    });
+    rowHTML+="</tr>";
+    tbody.innerHTML+=rowHTML;
+  });
 
   document.getElementById("home").classList.add("hidden");
   document.getElementById("inventory").classList.add("hidden");
