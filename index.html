@@ -143,7 +143,8 @@ async function showWarehouse(name) {
       const last30 = (last30Index !== -1) ? parseFloat((row[last30Index] || "0").replace(/,/g, "")) : 0;
 
       if (last30 > 0) {
-        daysStockout = ((available * 30) / last30).toFixed(1);
+  daysStockout = Math.round((available * 30) / last30);
+}
       }
     } catch (e) {
       console.error("Stockout calc error", e);
@@ -199,3 +200,4 @@ if(window.matchMedia('(display-mode: standalone)').matches){
 </script>
 </body>
 </html>
+
