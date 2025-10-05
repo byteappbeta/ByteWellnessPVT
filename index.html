@@ -214,13 +214,40 @@ async function showWarehouse(name) {
 }
 
 /* ====== BLINKIT ====== */
+
+// Custom date parser for sheet values
 function parseSheetDate(val){
   if(!val) return null;
   const s = String(val).trim();
-  if(/^\d{4}-\d{2}-\d{2}/.test(s)){ const [yyyy,mm,dd] = s.substring(0,10).split("-"); return new Date(Number(yyyy), Number(mm)-1, Number(dd)); }
-  if(/^\d{2}-\d{2}-\d{4}$/.test(s)){ const [dd,mm,yyyy] = s.split("-"); return new Date(Number(yyyy), Number(mm)-1, Number(dd)); }
-  if(/^\d{2}\/\d{2}\/\d{4}$/.test(s)){ const [dd,mm,yyyy] = s.split("/"); return new Date(Number(yyyy), Number(mm)-1, Number(dd)); }
-  const d = new Date(s); return isNaN(d.getTime()) ? null : d;
+
+  // yyyy-mm-dd or yyyy-mm-dd hh:mm:ss
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)){
+    const [yyyy,mm,dd] = s.substring(0,10).split("-");
+    return new Date(Number(yyyy), Number(mm)-1, Number(dd));
+  }
+
+  // dd-mm-yyyy
+  if(/^\d{2}-\d{2}-\d{4}$/.test(s)){
+    const [dd,mm,yyyy] = s.split("-");
+    return new Date(Number(yyyy), Number(mm)-1, Number(dd));
+  }
+
+  // dd/mm/yyyy
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(s)){
+    const [dd,mm,yyyy] = s.split("/");
+    return new Date(Number(yyyy), Number(mm)-1, Number(dd));
+  }
+
+  // fallback
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+// Parse input type=date (always yyyy-mm-dd)
+function parseInputDate(val){
+  if(!val) return null;
+  const [yyyy,mm,dd] = val.split("-");
+  return new Date(Number(yyyy), Number(mm)-1, Number(dd));
 }
 
 async function fetchBlinkitData(){
@@ -234,66 +261,115 @@ function groupBlinkitData(values,startDate,endDate){
   if(values.length < 2) return {cities:[], data:{}};
   const headers = values[0];
   const rows = values.slice(1);
+
   const dateIdx = headers.indexOf("Date");
   const productIdx = headers.indexOf("Product");
   const qtyIdx = headers.indexOf("Qty");
   const salesIdx = headers.indexOf("Sales");
   const cityIdx = headers.indexOf("City");
-  const grouped = {}; const cities = new Set();
+
+  const grouped = {}; 
+  const cities = new Set();
+
   rows.forEach(r=>{
-    const d = parseSheetDate(r[dateIdx]); if(!d) return;
+    const d = parseSheetDate(r[dateIdx]);
+    if(!d) return;
+
+    // inclusive filter
     if(startDate && d < startDate) return;
-    if(endDate){ const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23,59,59,999); if(d > endDay) return; }
-    const product = r[productIdx]||""; const qty = parseFloat(r[qtyIdx]||0); const sales = parseFloat(r[salesIdx]||0); const city = r[cityIdx]||"Unknown";
+    if(endDate){
+      const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23,59,59,999);
+      if(d > endDay) return;
+    }
+
+    const product = r[productIdx] || "";
+    const qty = parseFloat(r[qtyIdx]||0);
+    const sales = parseFloat(r[salesIdx]||0);
+    const city = r[cityIdx] || "Unknown";
+
     cities.add(city);
-    if(!grouped[product]) grouped[product]={qty:0,sales:0,byCity:{}}; grouped[product].qty+=qty; grouped[product].sales+=sales; grouped[product].byCity[city]=(grouped[product].byCity[city]||0)+qty;
+    if(!grouped[product]) grouped[product] = {qty:0,sales:0,byCity:{}};
+    grouped[product].qty += qty;
+    grouped[product].sales += sales;
+    grouped[product].byCity[city] = (grouped[product].byCity[city]||0)+qty;
   });
+
   return {cities:[...cities], data:grouped};
 }
 
 async function loadBlinkitData(){
   const start = document.getElementById("startDate").value;
   const end = document.getElementById("endDate").value;
-  const startDate = start?new Date(start):null;
-  const endDate = end?new Date(end):null;
+  const startDate = parseInputDate(start);
+  const endDate = parseInputDate(end);
+
   const values = await fetchBlinkitData();
   const {cities,data} = groupBlinkitData(values,startDate,endDate);
+
   const table = document.getElementById("blinkitTable");
   const thead = table.querySelector("thead");
   const tbody = table.querySelector("tbody");
   const tfoot = table.querySelector("tfoot");
+
   let headerHTML="<tr><th>Product</th><th>Qty</th><th>Gross Sales</th>";
-  cities.forEach(c=> headerHTML+=`<th>${c}</th>`); headerHTML+="</tr>"; thead.innerHTML=headerHTML;
+  cities.forEach(c=> headerHTML+=`<th>${c}</th>`);
+  headerHTML+="</tr>";
+  thead.innerHTML=headerHTML;
+
   let bodyHTML=""; let totalQty=0,totalSales=0; const cityTotals={};
   for(const [product,obj] of Object.entries(data)){
     totalQty+=obj.qty; totalSales+=obj.sales;
-    let row=`<tr><td>${product}</td><td>${obj.qty}</td><td>${obj.sales.toFixed(2)}</td>`;
-    cities.forEach(c=>{ const val=obj.byCity[c]||0; row+=`<td>${val}</td>`; cityTotals[c]=(cityTotals[c]||0)+val; });
-    row+="</tr>"; bodyHTML+=row;
+    let row=`<tr><td>${product}</td><td>${obj.qty}</td><td>${Math.round(obj.sales)}</td>`;
+    cities.forEach(c=>{
+      const val=obj.byCity[c]||0;
+      row+=`<td>${val}</td>`;
+      cityTotals[c]=(cityTotals[c]||0)+val;
+    });
+    row+="</tr>";
+    bodyHTML+=row;
   }
   tbody.innerHTML=bodyHTML;
-  let footHTML=`<tr><td><b>TOTAL</b></td><td><b>${totalQty}</b></td><td><b>${totalSales.toFixed(2)}</b></td>`;
-  cities.forEach(c=> footHTML+=`<td><b>${cityTotals[c]||0}</b></td>`); footHTML+="</tr>"; tfoot.innerHTML=footHTML;
+
+  let footHTML=`<tr><td><b>TOTAL</b></td><td><b>${totalQty}</b></td><td><b>${Math.round(totalSales)}</b></td>`;
+  cities.forEach(c=> footHTML+=`<td><b>${cityTotals[c]||0}</b></td>`);
+  footHTML+="</tr>";
+  tfoot.innerHTML=footHTML;
 }
 
 function exportBlinkit(){
-  const table=document.getElementById("blinkitTable"); let csv=""; const rows=table.querySelectorAll("tr");
-  rows.forEach(row=>{ const cols=row.querySelectorAll("th,td"); const arr=[]; cols.forEach(c=>arr.push(`"${c.innerText}"`)); csv+=arr.join(",")+"\n"; });
-  const blob=new Blob([csv],{type:"text/csv"}); const url=URL.createObjectURL(blob);
-  const a=document.createElement("a"); a.href=url; a.download="blinkit_sales.csv"; a.click(); URL.revokeObjectURL(url);
+  const table=document.getElementById("blinkitTable");
+  let csv=""; const rows=table.querySelectorAll("tr");
+  rows.forEach(row=>{
+    const cols=row.querySelectorAll("th,td");
+    const arr=[]; cols.forEach(c=>arr.push(`"${c.innerText}"`));
+    csv+=arr.join(",")+"\n";
+  });
+  const blob=new Blob([csv],{type:"text/csv"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download="blinkit_sales.csv"; a.click();
+  URL.revokeObjectURL(url);
 }
 
-// Default = yesterday, auto-load
+// ====== Default date = Yesterday (auto-load) ======
 document.addEventListener("DOMContentLoaded", ()=>{
-  const today = new Date(); const yesterday = new Date(today); yesterday.setDate(today.getDate()-1);
-  const yStr = yesterday.toISOString().slice(0,10);
-  const sd = document.getElementById("startDate"); const ed = document.getElementById("endDate");
-  if(sd && ed){ sd.value=yStr; ed.value=yStr; loadBlinkitData(); }
-});
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
 
+  const yStr = yesterday.toISOString().slice(0,10);
+  const sd = document.getElementById("startDate");
+  const ed = document.getElementById("endDate");
+
+  if(sd && ed){
+    sd.value = yStr;
+    ed.value = yStr;
+    loadBlinkitData(); // auto-load yesterday's data
+  }
+});
 /* ====== NAVIGATION ====== */
 const SECTIONS=["home","inventory","warehouse","sales","salesOverview","salesShare","blinkit"];
 function showSection(id){ SECTIONS.forEach(s=>document.getElementById(s).classList.add("hidden")); document.getElementById(id).classList.remove("hidden"); }
 </script>
 </body>
 </html>
+
