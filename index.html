@@ -88,20 +88,21 @@ async function showWarehouse(name) {
   const sheetName = warehouseSheets[name];
   const { headers, data } = await fetchWarehouseData(sheetName);
 
+  // Normalize headers (lowercase)
+  const normHeaders = headers.map(h => h.trim().toLowerCase());
+
   document.getElementById("warehouseName").innerText = name + " Warehouse";
   const syncedElem = document.getElementById("lastSynced");
 
-  // --- Handle Last Synced Date ---
+  // --- Handle Last Synced ---
+  const syncedIndex = normHeaders.indexOf("synced at");
   let syncedDate = "";
-  const syncedIndex = headers.indexOf("Synced At"); 
   if (syncedIndex !== -1 && data.length > 0) {
     const firstValue = data[0][syncedIndex];
     if (firstValue) {
       const datePart = firstValue.substring(0, 10); // yyyy-mm-dd
       const [yyyy, mm, dd] = datePart.split("-");
-      if (yyyy && mm && dd) {
-        syncedDate = `${dd}-${mm}-${yyyy}`;
-      }
+      if (yyyy && mm && dd) syncedDate = `${dd}-${mm}-${yyyy}`;
     }
   }
   syncedElem.innerText = "Last Synced: " + (syncedDate || "N/A");
@@ -116,25 +117,30 @@ async function showWarehouse(name) {
     return;
   }
 
-  // --- Remove Synced At column ---
-  const syncedAtIndex = headers.indexOf("Synced At"); 
-  const displayHeaders = headers.filter((_, i) => i !== syncedAtIndex);
+  // --- Remove Synced At ---
+  const displayHeaders = headers.filter((_, i) => i !== syncedIndex);
   displayHeaders.push("Days to Stockout");
   thead.innerHTML = "<tr>" + displayHeaders.map(h => `<th>${h}</th>`).join("") + "</tr>";
 
-  // --- Build table rows ---
+  // --- Build rows ---
   tbody.innerHTML = "";
   data.forEach(row => {
-    const displayRow = row.filter((_, i) => i !== syncedAtIndex);
+    const displayRow = row.filter((_, i) => i !== syncedIndex);
 
-    // Calculate Days to Stockout
     let daysStockout = "N/A";
     try {
-      const availableIndex = (name === "Amazon") ? headers.indexOf("Total Inventory") : headers.indexOf("Available");
-      const last30Index = headers.indexOf("Last 30 Days Sale"); 
+      const availableIndex = normHeaders.indexOf("available");
+      const last30Index = normHeaders.indexOf("last 30 days sale");
+      const totalInventoryIndex = normHeaders.indexOf("total inventory");
 
-      const available = (availableIndex !== -1) ? parseFloat((row[availableIndex] || "0").toString().replace(/,/g, "")) : 0;
-      const last30 = (last30Index !== -1) ? parseFloat((row[last30Index] || "0").toString().replace(/,/g, "")) : 0;
+      let available = 0;
+      if (name === "Amazon" && totalInventoryIndex !== -1) {
+        available = parseFloat((row[totalInventoryIndex] || "0").replace(/,/g, ""));
+      } else if (availableIndex !== -1) {
+        available = parseFloat((row[availableIndex] || "0").replace(/,/g, ""));
+      }
+
+      const last30 = (last30Index !== -1) ? parseFloat((row[last30Index] || "0").replace(/,/g, "")) : 0;
 
       if (last30 > 0) {
         daysStockout = ((available * 30) / last30).toFixed(1);
@@ -142,9 +148,9 @@ async function showWarehouse(name) {
     } catch (e) {
       console.error("Stockout calc error", e);
     }
+
     displayRow.push(daysStockout);
 
-    // Build row HTML with color logic
     let rowHTML = "<tr>";
     displayRow.forEach((cell, idx) => {
       if (idx === displayRow.length - 1 && daysStockout !== "N/A") {
@@ -159,6 +165,7 @@ async function showWarehouse(name) {
     tbody.innerHTML += rowHTML;
   });
 
+  // Switch page
   document.getElementById("home").classList.add("hidden");
   document.getElementById("inventory").classList.add("hidden");
   document.getElementById("warehouse").classList.remove("hidden");
