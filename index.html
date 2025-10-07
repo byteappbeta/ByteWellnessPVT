@@ -118,15 +118,13 @@
   </h2>
 
   <!-- Date Range Filter -->
-  <div style="display:flex; gap:12px; align-items:center; justify-content:center; margin:14px 0;">
-    <label for="amzStart" style="font-weight:600;">From:</label>
-    <input type="date" id="amzStart" style="padding:8px; border-radius:8px; border:1px solid #ccc;">
-    <label for="amzEnd" style="font-weight:600;">To:</label>
-    <input type="date" id="amzEnd" style="padding:8px; border-radius:8px; border:1px solid #ccc;">
-
-    <button id="amzApply" class="btn-back" style="padding:10px 16px;">Apply</button>
-    <button id="amzExport" class="btn-back" style="padding:10px 16px; background:#0f915a;">Export CSV</button>
-  </div>
+  <!-- Date Range Filter -->
+<div class="filters">
+  From: <input type="date" id="amzStart">
+  To: <input type="date" id="amzEnd">
+  <button id="amzApply" class="btn">Apply</button>
+  <button id="amzExport" class="btn" style="background:#0f915a;">Export CSV</button>
+</div>
 
   <!-- STEP Premium Target badge -->
   <div id="amzStepWrap" style="display:flex; align-items:center; justify-content:center; margin:6px 0 14px;">
@@ -635,6 +633,7 @@ const endDate   = new Date(new Date(endVal).setHours(23,59,59,999));  // ✅ mak
 
 </body>
 </html>
+
 
 
 
