@@ -2,45 +2,30 @@
 <html>
 <head>
   <title>BYTE WELLNESS PVT</title>
-
-  <!-- Google font -->
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-  <!-- Responsive -->
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
   <style>
-    /* === GLOBAL STYLES === */
     body { font-family: 'Montserrat', sans-serif; margin:0; padding:0; background:#f5f7fa; color:#333; }
     header { background:#1C39BB; color:white; text-align:center; padding:30px; font-size:36px; font-weight:800; text-transform:uppercase; }
-
     .container { max-width:1000px; margin:20px auto; padding:0 20px; }
-
     .card-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:25px; margin-top:25px; }
     .card { background:white; padding:35px 25px; border-radius:15px; box-shadow:0 6px 20px rgba(0,0,0,0.1); text-align:center; font-weight:600; font-size:22px; cursor:pointer; transition:0.2s; text-transform:uppercase; }
     .card:hover { transform:translateY(-6px); box-shadow:0 10px 25px rgba(0,0,0,0.15); }
-
     .btn { display:inline-block; margin-top:30px; padding:14px 28px; background:#1C39BB; color:white; font-size:16px; font-weight:700; border:none; border-radius:10px; cursor:pointer; transition:0.3s; text-transform:uppercase; }
     .btn:hover { background:#162f94; }
-
     h2 { font-weight:700; text-align:center; margin-top:20px; color:#1C39BB; text-transform:uppercase; }
-
     table { width:100%; border-collapse:collapse; background:white; border-radius:12px; overflow:hidden; box-shadow:0 5px 20px rgba(0,0,0,0.1); text-align:center; font-weight:500; font-size:16px; margin-top:25px; }
     th { background:#1C39BB; color:white; padding:14px; text-transform:uppercase; letter-spacing:1px; }
     td { padding:14px; border-bottom:1px solid #ddd; text-align:center; }
     tr:hover { background:#f1f1f1; }
-    tfoot td { font-weight:700; background:#f0f0f0; }
-
     .hidden { display:none; }
-
     #lastSynced { text-align:center; font-weight:700; margin-bottom:10px; text-transform:uppercase; }
-
     .filters { text-align:center; margin-top:20px; }
     .filters input { margin:0 10px; padding:8px; font-size:14px; }
-
     .export-btn { margin-top:15px; padding:10px 20px; background:#1C39BB; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600; }
     .export-btn:hover { background:#162f94; }
-
+    tfoot td { font-weight:700; background:#f0f0f0; }
+    /* Channel colors */
     .amazon { background:#FF9900; color:white; }
     .shopify { background:#96BF48; color:white; }
     .flipkart { background:#2874F0; color:white; }
@@ -58,7 +43,7 @@
   </div>
 </div>
 
-<!-- INVENTORY -->
+<!-- INVENTORY PAGE -->
 <div class="container hidden" id="inventory">
   <h2>Warehouses</h2>
   <div class="card-grid">
@@ -70,7 +55,7 @@
   <button class="btn" onclick="showSection('home')">Back</button>
 </div>
 
-<!-- WAREHOUSE DETAIL -->
+<!-- WAREHOUSE DETAIL PAGE -->
 <div class="container hidden" id="warehouse">
   <h2 id="warehouseName"></h2>
   <div id="lastSynced"></div>
@@ -81,7 +66,7 @@
   <button class="btn" onclick="showSection('inventory')">Back to Warehouses</button>
 </div>
 
-<!-- SALES MAIN -->
+<!-- SALES MAIN PAGE -->
 <div class="container hidden" id="sales">
   <h2>Sales</h2>
   <div class="card-grid">
@@ -95,7 +80,7 @@
 <div class="container hidden" id="salesOverview">
   <h2>Sales Overview</h2>
   <div class="card-grid">
-    <div class="card amazon" onclick="showSection('amazonSales')">Amazon</div>
+   <div class="card amazon" onclick="showSection('amazonSales')">Amazon</div>
     <div class="card shopify" onclick="alert('Shopify sales page coming soon')">Shopify</div>
     <div class="card flipkart" onclick="alert('Flipkart sales page coming soon')">Flipkart</div>
     <div class="card blinkit" onclick="showSection('blinkit')">Blinkit</div>
@@ -117,8 +102,8 @@
     From: <input type="date" id="startDate">
     To: <input type="date" id="endDate">
     <button class="btn" onclick="loadBlinkitData()">Apply</button>
-    <button class="btn" onclick="exportBlinkit()">Export CSV</button>
   </div>
+  <button class="export-btn" onclick="exportBlinkit()">Export CSV</button>
   <table id="blinkitTable">
     <thead></thead>
     <tbody></tbody>
@@ -126,103 +111,530 @@
   </table>
   <button class="btn" onclick="showSection('salesOverview')">Back to Overview</button>
 </div>
-
-<!-- AMAZON SALES -->
+  <!-- AMAZON: Sales Overview Tab Content -->
 <div id="amazonSales" class="container hidden">
-  <h2>Amazon Sales</h2>
-  <div class="filters">
-    From: <input type="date" id="amzStart">
-    To: <input type="date" id="amzEnd">
-    <button id="amzApply" class="btn">Apply</button>
-    <button id="amzExport" class="btn" style="background:#0f915a;">Export CSV</button>
+  <h2 style="font-weight:700; text-align:center; margin-top:20px; color:#1C39BB; text-transform:uppercase;">
+    Amazon Sales
+  </h2>
+
+  <!-- Date Range Filter -->
+  <div style="display:flex; gap:12px; align-items:center; justify-content:center; margin:14px 0;">
+    <label for="amzStart" style="font-weight:600;">From:</label>
+    <input type="date" id="amzStart" style="padding:8px; border-radius:8px; border:1px solid #ccc;">
+    <label for="amzEnd" style="font-weight:600;">To:</label>
+    <input type="date" id="amzEnd" style="padding:8px; border-radius:8px; border:1px solid #ccc;">
+
+    <button id="amzApply" class="btn-back" style="padding:10px 16px;">Apply</button>
+    <button id="amzExport" class="btn-back" style="padding:10px 16px; background:#0f915a;">Export CSV</button>
   </div>
-  <div id="amzStepWrap" style="text-align:center; margin:12px 0;">
+
+  <!-- STEP Premium Target badge -->
+  <div id="amzStepWrap" style="display:flex; align-items:center; justify-content:center; margin:6px 0 14px;">
     <span id="amzStepBadge" style="padding:8px 12px; border-radius:999px; font-weight:700; text-transform:uppercase;"></span>
     <span id="amzStepDetail" style="margin-left:10px; font-weight:600; color:#555;"></span>
   </div>
+
+  <!-- Table -->
   <table id="amazonTable">
     <thead></thead>
     <tbody></tbody>
     <tfoot></tfoot>
   </table>
-  <button class="btn" onclick="showSection('salesOverview')">Back to Overview</button>
 </div>
 
-<!-- ================= JS ================= -->
 <script>
 /* ====== CONFIG ====== */
 const API_KEY = "AIzaSyD6yREIVE1b8hq0kiYqFoJBfsLzPiGGv4k";
 const WAREHOUSE_SHEET_ID = "12Hx1lGMB8dPHND7u3vqbN2itq3QHzBCIiBMkRRWbk6Y";
-const BLINKIT_SHEET_ID = "1LJ7H8Zwy8-mM_1K0TCdke-89qfK00yQAV04OtitC45Q";
-const BLINKIT_SHEET = "sheet1";
-const AMAZON_SHEET_ID = "1e4Vdkw2Ms0dCxskAKbUfLk3ttqeFT_nbQDhsPtKWWhA";
-const AMAZON_RANGE = "sheet1";
-
-/* ====== NAVIGATION ====== */
-const SECTIONS=["home","inventory","warehouse","sales","salesOverview","salesShare","blinkit","amazonSales"];
-function showSection(id){
-  SECTIONS.forEach(s=>{
-    const el=document.getElementById(s);
-    if(el) el.classList.add("hidden");
-  });
-  const target=document.getElementById(id);
-  if(target) target.classList.remove("hidden");
-
-  if(id==="blinkit"){
-    const today=new Date();
-    const yesterday=new Date(today); yesterday.setDate(today.getDate()-1);
-    const yStr=yesterday.toISOString().slice(0,10);
-    document.getElementById("startDate").value=yStr;
-    document.getElementById("endDate").value=yStr;
-    loadBlinkitData();
-  }
-  if(id==="amazonSales"){
-    setAmazonDefaultDates();
-    loadAmazonSales();
-  }
-}
+const BLINKIT_SHEET_ID   = "1LJ7H8Zwy8-mM_1K0TCdke-89qfK00yQAV04OtitC45Q";
+const BLINKIT_SHEET = "sheet1"; // exact tab name inside Blinkit sheet
 
 /* ====== INVENTORY ====== */
-const warehouseSheets={"Master":"Master","Mumbai":"Mumbai","Bangalore":"Bangalore","Amazon":"Amazon"};
-async function fetchWarehouseData(sheetName){
-  const url=`https://sheets.googleapis.com/v4/spreadsheets/${WAREHOUSE_SHEET_ID}/values/${encodeURIComponent(sheetName)}?key=${API_KEY}`;
-  const response=await fetch(url); const json=await response.json();
-  return { headers:(json.values||[])[0]||[], data:(json.values||[]).slice(1) };
+const warehouseSheets = {
+  "Master": "Master",
+  "Mumbai": "Mumbai",
+  "Bangalore": "Bangalore",
+  "Amazon": "Amazon"
+};
+
+async function fetchWarehouseData(sheetName) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${WAREHOUSE_SHEET_ID}/values/${encodeURIComponent(sheetName)}?key=${API_KEY}`;
+  const response = await fetch(url);
+  const json = await response.json();
+  const values = json.values || [];
+  if(values.length === 0) return { headers: [], data: [] };
+  const headers = values[0];
+  const data = values.slice(1);
+  return { headers, data };
 }
-async function showWarehouse(name){
+
+async function showWarehouse(name) {
   showSection('warehouse');
-  const { headers,data }=await fetchWarehouseData(warehouseSheets[name]);
-  const normHeaders=headers.map(h=>(h||"").trim().toLowerCase());
-  document.getElementById("warehouseName").innerText=name+" Warehouse";
-  const syncedIndex=normHeaders.indexOf("synced at");
-  let syncedDate=""; if(syncedIndex!==-1&&data.length>0){ syncedDate=(data[0][syncedIndex]||"").substring(0,10);}
-  document.getElementById("lastSynced").innerText="LAST SYNCED: "+(syncedDate||"N/A");
-  const table=document.querySelector("#warehouse table");
-  const thead=table.querySelector("thead"),tbody=table.querySelector("tbody");
-  if(data.length===0){ thead.innerHTML=""; tbody.innerHTML=`<tr><td colspan="5">No data available</td></tr>`; return;}
-  thead.innerHTML="<tr>"+headers.map(h=>`<th>${h}</th>`).join("")+"</tr>";
-  tbody.innerHTML=data.map(r=>"<tr>"+r.map(c=>`<td>${c||""}</td>`).join("")+"</tr>").join("");
+  const sheetName = warehouseSheets[name];
+  const { headers, data } = await fetchWarehouseData(sheetName);
+  const normHeaders = headers.map(h => (h||"").trim().toLowerCase());
+
+  document.getElementById("warehouseName").innerText = name + " Warehouse";
+  const syncedElem = document.getElementById("lastSynced");
+
+  const syncedIndex = normHeaders.indexOf("synced at");
+  let syncedDate = "";
+  if (syncedIndex !== -1 && data.length > 0) {
+    const firstValue = (data[0][syncedIndex] || "").trim();
+    if (firstValue.includes("/")) {
+      const [dd, mm, yyyy] = firstValue.split("/");
+      if (dd && mm && yyyy) syncedDate = `${dd}-${mm}-${yyyy}`;
+    } else if (firstValue.includes("-")) {
+      const parts = firstValue.split("-");
+      if (parts[0].length === 4) {
+        const [yyyy, mm, dd] = firstValue.substring(0, 10).split("-");
+        syncedDate = `${dd}-${mm}-${yyyy}`;
+      } else syncedDate = firstValue.substring(0, 10);
+    }
+  }
+  syncedElem.innerText = "LAST SYNCED: " + (syncedDate || "N/A");
+
+  const table = document.querySelector("#warehouse table");
+  const thead = table.querySelector("thead");
+  const tbody = table.querySelector("tbody");
+
+  if (data.length === 0) {
+    thead.innerHTML = "";
+    tbody.innerHTML = `<tr><td colspan="${headers.length||1}">No data available</td></tr>`;
+    return;
+  }
+
+  const displayHeaders = headers.filter((_, i) => i !== syncedIndex);
+  if (name !== "Master") displayHeaders.push("Days to Stockout");
+  thead.innerHTML = "<tr>" + displayHeaders.map(h => `<th>${h}</th>`).join("") + "</tr>";
+
+  tbody.innerHTML = "";
+  data.forEach(row => {
+    const displayRow = row.filter((_, i) => i !== syncedIndex);
+    let daysStockout = "N/A";
+    if (name !== "Master") {
+      try {
+        const availableIndex = normHeaders.indexOf("available");
+        const last30Index = normHeaders.indexOf("last 30 days sale");
+        const totalInvIndex = normHeaders.indexOf("total inventory");
+        let baseQty = 0;
+        if (name === "Amazon" && totalInvIndex !== -1) {
+          baseQty = parseFloat((row[totalInvIndex]||"0").replace(/,/g,""));
+        } else if (availableIndex !== -1) {
+          baseQty = parseFloat((row[availableIndex]||"0").replace(/,/g,""));
+        }
+        const last30 = last30Index !== -1 ? parseFloat((row[last30Index]||"0").replace(/,/g,"")) : 0;
+        if (last30 > 0) daysStockout = Math.round((baseQty * 30) / last30);
+      } catch {}
+      displayRow.push(daysStockout);
+    }
+    let rowHTML = "<tr>";
+    displayRow.forEach((cell, idx) => {
+      if (name !== "Master" && idx === displayRow.length - 1 && daysStockout !== "N/A") {
+        const threshold = (name === "Amazon") ? 20 : 10;
+        const color = (parseFloat(daysStockout) < threshold) ? "#FF4D4F" : "#333";
+        rowHTML += `<td style="color:${color}; font-weight:600;">${cell}</td>`;
+      } else {
+        rowHTML += `<td>${cell||""}</td>`;
+      }
+    });
+    rowHTML += "</tr>";
+    tbody.insertAdjacentHTML("beforeend", rowHTML);
+  });
 }
 
 /* ====== BLINKIT ====== */
-function parseSheetDate(val){ if(!val) return null; const s=String(val).trim(); if(/^\d{2}-\d{2}-\d{4}$/.test(s)){ const [dd,mm,yyyy]=s.split("-"); return new Date(+yyyy,+mm-1,+dd);} const d=new Date(s); return isNaN(d.getTime())?null:d;}
-async function fetchBlinkitData(){ const url=`https://sheets.googleapis.com/v4/spreadsheets/${BLINKIT_SHEET_ID}/values/${encodeURIComponent(BLINKIT_SHEET)}?key=${API_KEY}`; const res=await fetch(url); const json=await res.json(); return json.values||[];}
-function groupBlinkitData(values,startDate,endDate){ if(values.length<2)return{cities:[],data:{}}; const headers=values[0]; const rows=values.slice(1); const dateIdx=headers.indexOf("Date"),productIdx=headers.indexOf("Product"),qtyIdx=headers.indexOf("Qty"),salesIdx=headers.indexOf("Sales"),cityIdx=headers.indexOf("City"); const grouped={},cities=new Set(); rows.forEach(r=>{ const d=parseSheetDate(r[dateIdx]); if(!d)return; if(startDate&&d<startDate)return; if(endDate&&d>endDate)return; const p=r[productIdx]||"",q=+r[qtyIdx]||0,s=+r[salesIdx]||0,c=r[cityIdx]||"Unknown"; cities.add(c); if(!grouped[p]) grouped[p]={qty:0,sales:0,byCity:{}}; grouped[p].qty+=q; grouped[p].sales+=s; grouped[p].byCity[c]=(grouped[p].byCity[c]||0)+q; }); return{cities:[...cities],data:grouped};}
-async function loadBlinkitData(){ const s=document.getElementById("startDate").value; const e=document.getElementById("endDate").value; const sd=s?new Date(s):null; const ed=e?new Date(e):null; const values=await fetchBlinkitData(); const {cities,data}=groupBlinkitData(values,sd,ed); const thead=document.querySelector("#blinkitTable thead"),tbody=document.querySelector("#blinkitTable tbody"),tfoot=document.querySelector("#blinkitTable tfoot"); thead.innerHTML="<tr><th>Product</th><th>Qty</th><th>Gross Sales</th>"+cities.map(c=>`<th>${c}</th>`).join("")+"</tr>"; let tq=0,ts=0,ct={}; tbody.innerHTML=Object.entries(data).map(([p,o])=>{ tq+=o.qty; ts+=o.sales; let row=`<tr><td>${p}</td><td>${o.qty}</td><td>${Math.round(o.sales)}</td>`; cities.forEach(c=>{ const v=o.byCity[c]||0; row+=`<td>${v}</td>`; ct[c]=(ct[c]||0)+v;}); return row+"</tr>";}).join(""); tfoot.innerHTML=`<tr><td><b>TOTAL</b></td><td><b>${tq}</b></td><td><b>${Math.round(ts)}</b></td>${cities.map(c=>`<td><b>${ct[c]||0}</b></td>`).join("")}</tr>`;}
-function exportBlinkit(){ const rows=document.querySelectorAll("#blinkitTable tr"); let csv=""; rows.forEach(r=>{ csv+=Array.from(r.querySelectorAll("th,td")).map(c=>`"${c.innerText}"`).join(",")+"\n";}); const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="blinkit_sales.csv"; a.click();}
 
-/* ====== AMAZON ====== */
-function fmtYMD(d){ return d.toISOString().slice(0,10);}
-function setAmazonDefaultDates(){ const y=new Date(); y.setDate(y.getDate()-1); document.getElementById("amzStart").value=fmtYMD(y); document.getElementById("amzEnd").value=fmtYMD(y);}
-async function fetchAmazonValues(){ const url=`https://sheets.googleapis.com/v4/spreadsheets/${AMAZON_SHEET_ID}/values/${encodeURIComponent(AMAZON_RANGE)}?key=${API_KEY}`; const res=await fetch(url); const json=await res.json(); return json.values||[];}
-function aggregateAmazon(values,sd,ed){ if(values.length<2)return{rows:[],totals:{qty:0,salesPos:0,rtoQty:0,refundsAbs:0}}; const h=values[0].map(x=>x.toLowerCase()); const rows=values.slice(1); const di=h.indexOf("date"),ti=h.indexOf("type"),si=h.indexOf("sku"),qi=h.indexOf("qty"),sa=h.indexOf("sales(-gst)"); const bySku=new Map(); rows.forEach(r=>{ const d=parseSheetDate(r[di]); if(!d)return; if(d<sd||d>ed)return; const type=(r[ti]||"").toLowerCase(),sku=r[si]||"",q=+r[qi]||0,s=+r[sa]||0; if(!sku)return; if(!bySku.has(sku))bySku.set(sku,{sku,qtyOrder:0,salesPos:0,rtoQty:0,refundsAbs:0}); const rec=bySku.get(sku); if(type==="order"){ rec.qtyOrder+=q; if(s>0)rec.salesPos+=s;} else if(type==="refund"){ rec.rtoQty+=Math.abs(q); if(s<0)rec.refundsAbs+=Math.abs(s); }}); let out=[],tQ=0,tS=0,tR=0,tF=0; for(const rec of bySku.values()){ out.push({sku:rec.sku,qty:rec.qtyOrder,sales:rec.salesPos,rto:rec.rtoQty,refunds:rec.refundsAbs}); tQ+=rec.qtyOrder;tS+=rec.salesPos;tR+=rec.rtoQty;tF+=rec.refundsAbs;} return{rows:out,totals:{qty:tQ,salesPos:tS,rtoQty:tR,refundsAbs:tF}};}
-function renderAmazonTable(agg){ const thead=document.querySelector("#amazonTable thead"),tbody=document.querySelector("#amazonTable tbody"),tfoot=document.querySelector("#amazonTable tfoot"); thead.innerHTML="<tr><th>Sku</th><th>Qty</th><th>Sales(-GST)</th><th>RTO</th><th>Refunds</th></tr>"; tbody.innerHTML=agg.rows.map(r=>`<tr><td>${r.sku}</td><td>${r.qty}</td><td>${r.sales}</td><td>${r.rto}</td><td>${r.refunds}</td></tr>`).join("")||"<tr><td colspan=5>No data</td></tr>"; tfoot.innerHTML=`<tr><td><b>TOTAL</b></td><td><b>${agg.totals.qty}</b></td><td><b>${agg.totals.salesPos}</b></td><td><b>${agg.totals.rtoQty}</b></td><td><b>${agg.totals.refundsAbs}</b></td></tr>`;}
-function evaluateStepTarget(t,sd,ed){ const days=Math.floor((ed-sd)/(1000*60*60*24))+1; const salesTarget=54800*days,qtyTarget=110*days; const net=t.salesPos-t.refundsAbs; return{fulfilled:(net>=salesTarget)||(t.qty>=qtyTarget),days};}
-function renderStepBadge(res,sd,ed){ const b=document.getElementById("amzStepBadge"),d=document.getElementById("amzStepDetail"); if(res.fulfilled){ b.textContent="STEP Premium Target – Fulfilled"; b.style.background="#0f915a";} else{ b.textContent="STEP Premium Target – Unfulfilled"; b.style.background="#ff4d4f";} const opt={day:"2-digit",month:"2-digit",year:"numeric"}; const s=sd.toLocaleDateString("en-GB",opt),e=ed.toLocaleDateString("en-GB",opt); d.textContent=res.days===1?`(${s})`:`(${s} → ${e})`; }
-async function loadAmazonSales(){ const s=new Date(document.getElementById("amzStart").value); const e=new Date(document.getElementById("amzEnd").value); const v=await fetchAmazonValues(); const agg=aggregateAmazon(v,s,e); renderAmazonTable(agg); renderStepBadge(evaluateStepTarget(agg.totals,s,e),s,e);}
-function exportAmazonCSV(){ const rows=document.querySelectorAll("#amazonTable tr"); let csv=""; rows.forEach(r=>{ csv+=Array.from(r.querySelectorAll("th,td")).map(c=>`"${c.innerText}"`).join(",")+"\n";}); const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="amazon_sales.csv"; a.click();}
-document.getElementById("amzApply").addEventListener("click",loadAmazonSales);
-document.getElementById("amzExport").addEventListener("click",exportAmazonCSV);
+// Custom date parser for sheet values
+function parseSheetDate(val){
+  if(!val) return null;
+  const s = String(val).trim();
+
+  // yyyy-mm-dd or yyyy-mm-dd hh:mm:ss
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)){
+    const [yyyy,mm,dd] = s.substring(0,10).split("-");
+    return new Date(Number(yyyy), Number(mm)-1, Number(dd));
+  }
+
+  // dd-mm-yyyy
+  if(/^\d{2}-\d{2}-\d{4}$/.test(s)){
+    const [dd,mm,yyyy] = s.split("-");
+    return new Date(Number(yyyy), Number(mm)-1, Number(dd));
+  }
+
+  // dd/mm/yyyy
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(s)){
+    const [dd,mm,yyyy] = s.split("/");
+    return new Date(Number(yyyy), Number(mm)-1, Number(dd));
+  }
+
+  // fallback
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+// Parse input type=date (always yyyy-mm-dd)
+function parseInputDate(val){
+  if(!val) return null;
+  const [yyyy,mm,dd] = val.split("-");
+  return new Date(Number(yyyy), Number(mm)-1, Number(dd));
+}
+
+async function fetchBlinkitData(){
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${BLINKIT_SHEET_ID}/values/${encodeURIComponent(BLINKIT_SHEET)}?key=${API_KEY}`;
+  const res = await fetch(url);
+  const json = await res.json();
+  return json.values || [];
+}
+
+function groupBlinkitData(values,startDate,endDate){
+  if(values.length < 2) return {cities:[], data:{}};
+  const headers = values[0];
+  const rows = values.slice(1);
+
+  const dateIdx = headers.indexOf("Date");
+  const productIdx = headers.indexOf("Product");
+  const qtyIdx = headers.indexOf("Qty");
+  const salesIdx = headers.indexOf("Sales");
+  const cityIdx = headers.indexOf("City");
+
+  const grouped = {}; 
+  const cities = new Set();
+
+  rows.forEach(r=>{
+    const d = parseSheetDate(r[dateIdx]);
+    if(!d) return;
+
+    // inclusive filter
+    if(startDate && d < startDate) return;
+    if(endDate){
+      const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23,59,59,999);
+      if(d > endDay) return;
+    }
+
+    const product = r[productIdx] || "";
+    const qty = parseFloat(r[qtyIdx]||0);
+    const sales = parseFloat(r[salesIdx]||0);
+    const city = r[cityIdx] || "Unknown";
+
+    cities.add(city);
+    if(!grouped[product]) grouped[product] = {qty:0,sales:0,byCity:{}};
+    grouped[product].qty += qty;
+    grouped[product].sales += sales;
+    grouped[product].byCity[city] = (grouped[product].byCity[city]||0)+qty;
+  });
+
+  return {cities:[...cities], data:grouped};
+}
+
+async function loadBlinkitData(){
+  const start = document.getElementById("startDate").value;
+  const end = document.getElementById("endDate").value;
+  const startDate = parseInputDate(start);
+  const endDate = parseInputDate(end);
+
+  const values = await fetchBlinkitData();
+  const {cities,data} = groupBlinkitData(values,startDate,endDate);
+
+  const table = document.getElementById("blinkitTable");
+  const thead = table.querySelector("thead");
+  const tbody = table.querySelector("tbody");
+  const tfoot = table.querySelector("tfoot");
+
+  let headerHTML="<tr><th>Product</th><th>Qty</th><th>Gross Sales</th>";
+  cities.forEach(c=> headerHTML+=`<th>${c}</th>`);
+  headerHTML+="</tr>";
+  thead.innerHTML=headerHTML;
+
+  let bodyHTML=""; let totalQty=0,totalSales=0; const cityTotals={};
+  for(const [product,obj] of Object.entries(data)){
+    totalQty+=obj.qty; totalSales+=obj.sales;
+    let row=`<tr><td>${product}</td><td>${obj.qty}</td><td>${Math.round(obj.sales)}</td>`;
+    cities.forEach(c=>{
+      const val=obj.byCity[c]||0;
+      row+=`<td>${val}</td>`;
+      cityTotals[c]=(cityTotals[c]||0)+val;
+    });
+    row+="</tr>";
+    bodyHTML+=row;
+  }
+  tbody.innerHTML=bodyHTML;
+
+  let footHTML=`<tr><td><b>TOTAL</b></td><td><b>${totalQty}</b></td><td><b>${Math.round(totalSales)}</b></td>`;
+  cities.forEach(c=> footHTML+=`<td><b>${cityTotals[c]||0}</b></td>`);
+  footHTML+="</tr>";
+  tfoot.innerHTML=footHTML;
+}
+
+function exportBlinkit(){
+  const table=document.getElementById("blinkitTable");
+  let csv=""; const rows=table.querySelectorAll("tr");
+  rows.forEach(row=>{
+    const cols=row.querySelectorAll("th,td");
+    const arr=[]; cols.forEach(c=>arr.push(`"${c.innerText}"`));
+    csv+=arr.join(",")+"\n";
+  });
+  const blob=new Blob([csv],{type:"text/csv"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download="blinkit_sales.csv"; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ====== Default date = Yesterday (auto-load) ======
+document.addEventListener("DOMContentLoaded", ()=>{
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  const yStr = yesterday.toISOString().slice(0,10);
+  const sd = document.getElementById("startDate");
+  const ed = document.getElementById("endDate");
+
+  if(sd && ed){
+    sd.value = yStr;
+    ed.value = yStr;
+    loadBlinkitData(); // auto-load yesterday's data
+  }
+});
+/* ====== NAVIGATION ====== */
+const SECTIONS=["home","inventory","warehouse","sales","salesOverview","salesShare","blinkit"];
+function showSection(id){ SECTIONS.forEach(s=>document.getElementById(s).classList.add("hidden")); document.getElementById(id).classList.remove("hidden"); }
 </script>
+  <script>
+/* ====== AMAZON (Website Aggregation) ====== */
+
+const AMAZON_SHEET_ID = "1e4Vdkw2Ms0dCxskAKbUfLk3ttqeFT_nbQDhsPtKWWhA"; // <- set this
+const AMAZON_RANGE = "sheet1"; // tab name in your Amazon sheet
+
+// --- date helpers
+function fmtYMD(d){ const m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0"); return `${d.getFullYear()}-${m}-${day}`;}
+function parseSheetDate(val){
+  if(!val) return null;
+  const s=String(val).trim();
+  if(/^\d{2}-\d{2}-\d{4}$/.test(s)){ const [dd,mm,yyyy]=s.split("-"); return new Date(+yyyy,+mm-1,+dd); }
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)){ const [y,m,d]=s.split("-"); return new Date(+y,+m-1,+d); }
+  const d=new Date(s); return isNaN(d.getTime())?null:d;
+}
+function setAmazonDefaultDates(){
+  const end=new Date(); end.setDate(end.getDate()-1);
+  const start=new Date(end);
+  document.getElementById("amzStart").value = fmtYMD(start);
+  document.getElementById("amzEnd").value   = fmtYMD(end);
+}
+
+// number helpers
+function toInt(n){ const x = Number(n); return isNaN(x)?0:Math.round(x); }
+function moneyInt(n){ return toInt(n).toString(); }
+
+// fetch values from Google Sheets
+async function fetchAmazonValues(){
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${AMAZON_SHEET_ID}/values/${encodeURIComponent(AMAZON_RANGE)}?key=${API_KEY}`;
+  const res = await fetch(url);
+  const json = await res.json();
+  if(!json.values) throw new Error("No values from Amazon sheet");
+  return json.values;
+}
+
+// aggregation
+function aggregateAmazon(values, startDate, endDate){
+  if(values.length<2) return { rows:[], totals:{qty:0,salesPos:0,rtoQty:0,refundsAbs:0} };
+
+  const headers = values[0].map(h=>String(h).trim().toLowerCase());
+  const rows    = values.slice(1);
+
+  const idxDate   = headers.indexOf("date");
+  const idxType   = headers.indexOf("type");
+  const idxSku    = headers.indexOf("sku");
+  const idxQty    = headers.indexOf("qty");
+  const idxSales  = headers.indexOf("sales(-gst)");
+
+  if(idxDate===-1 || idxType===-1 || idxSku===-1 || idxQty===-1 || idxSales===-1){
+    throw new Error("Amazon sheet missing one of required headers");
+  }
+
+  const endInclusive = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23,59,59,999);
+
+  const bySku = new Map();
+
+  rows.forEach(r=>{
+    const d = parseSheetDate(r[idxDate]); if(!d) return;
+    if(d < startDate || d > endInclusive) return;
+
+    const type  = (r[idxType] || "").toString().trim().toLowerCase();
+    const sku   = (r[idxSku]  || "").toString().trim();
+    const qty   = toInt(r[idxQty]);
+    const sales = Number((r[idxSales] || "0").toString().replace(/,/g,""));
+
+    if(!sku) return;
+
+    if(!bySku.has(sku)){
+      bySku.set(sku, { sku, qtyOrder:0, salesPos:0, rtoQty:0, refundsAbs:0 });
+    }
+    const rec = bySku.get(sku);
+
+    if(type === "order"){
+      rec.qtyOrder += qty;
+      if(sales > 0) rec.salesPos += sales;
+    } else if(type === "refund"){
+      rec.rtoQty += Math.abs(qty);
+      if(sales < 0) rec.refundsAbs += Math.abs(sales);
+    }
+  });
+
+  const out = [];
+  let tQty=0, tSales=0, tRto=0, tRefunds=0;
+
+  for(const rec of bySku.values()){
+    out.push({ sku: rec.sku, qty: rec.qtyOrder, sales: rec.salesPos, rto: rec.rtoQty, refunds: rec.refundsAbs });
+    tQty     += rec.qtyOrder;
+    tSales   += rec.salesPos;
+    tRto     += rec.rtoQty;
+    tRefunds += rec.refundsAbs;
+  }
+
+  out.sort((a,b)=> b.sales - a.sales);
+
+  return { rows: out, totals:{qty:tQty, salesPos:tSales, rtoQty:tRto, refundsAbs:tRefunds} };
+}
+
+// STEP Premium
+function evaluateStepTarget(totals, startDate, endDate){
+  const targetSalesPerDay = 55555;
+  const targetQtyPerDay   = 112;
+
+  const s = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+  const e = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+  const days = Math.floor((e - s)/(1000*60*60*24)) + 1;
+
+  const salesTarget = targetSalesPerDay * days;
+  const qtyTarget   = targetQtyPerDay   * days;
+  const netSales = totals.salesPos - totals.refundsAbs;
+
+  const fulfilled = (netSales >= salesTarget) || (totals.qty >= qtyTarget);
+
+  return { fulfilled, days };
+}
+
+// render
+function renderAmazonTable(agg){
+  const tbl = document.getElementById("amazonTable");
+  const thead = tbl.querySelector("thead");
+  const tbody = tbl.querySelector("tbody");
+  const tfoot = tbl.querySelector("tfoot");
+
+  thead.innerHTML = `
+    <tr>
+      <th>Sku</th>
+      <th>Qty</th>
+      <th>Sales(-GST)</th>
+      <th>RTO</th>
+      <th>Refunds</th>
+    </tr>
+  `;
+
+  let bodyHTML = "";
+  agg.rows.forEach(r=>{
+    bodyHTML += `
+      <tr>
+        <td>${r.sku}</td>
+        <td>${r.qty}</td>
+        <td>${moneyInt(r.sales)}</td>
+        <td>${r.rto}</td>
+        <td>${moneyInt(r.refunds)}</td>
+      </tr>
+    `;
+  });
+  tbody.innerHTML = bodyHTML || `<tr><td colspan="5">No data in this date range.</td></tr>`;
+
+  tfoot.innerHTML = `
+    <tr>
+      <td><b>TOTAL</b></td>
+      <td><b>${agg.totals.qty}</b></td>
+      <td><b>${moneyInt(agg.totals.salesPos)}</b></td>
+      <td><b>${agg.totals.rtoQty}</b></td>
+      <td><b>${moneyInt(agg.totals.refundsAbs)}</b></td>
+    </tr>
+  `;
+}
+
+function renderStepBadge(evalRes, startDate, endDate){
+  const badge = document.getElementById("amzStepBadge");
+  const detail = document.getElementById("amzStepDetail");
+
+  if(evalRes.fulfilled){
+    badge.textContent = "STEP Premium Target – Fulfilled";
+    badge.style.background = "#0f915a"; badge.style.color = "white";
+  }else{
+    badge.textContent = "STEP Premium Target – Unfulfilled";
+    badge.style.background = "#ff4d4f"; badge.style.color = "white";
+  }
+
+  // Date formatting
+  const options = { day:"2-digit", month:"2-digit", year:"numeric" };
+  const startStr = startDate.toLocaleDateString("en-GB", options);
+  const endStr   = endDate.toLocaleDateString("en-GB", options);
+
+  if(evalRes.days === 1){
+    detail.textContent = `(${startStr})`;
+  }else{
+    detail.textContent = `(${startStr} → ${endStr})`;
+  }
+}
+
+// export
+function exportAmazonCSV(){
+  const table = document.getElementById("amazonTable");
+  let csv = "";
+  table.querySelectorAll("tr").forEach(tr=>{
+    const cols = tr.querySelectorAll("th,td");
+    const line = Array.from(cols).map(td => `"${td.innerText.replace(/"/g,'""')}"`).join(",");
+    csv += line + "\n";
+  });
+  const blob = new Blob([csv], {type:"text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "amazon_sales.csv"; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// main loader
+async function loadAmazonSales(){
+  try{
+    const startVal = document.getElementById("amzStart").value;
+    const endVal   = document.getElementById("amzEnd").value;
+    const startDate = new Date(startVal);
+    const endDate   = new Date(endVal);
+    if(!startDate || !endDate){ alert("Please select a date range."); return; }
+
+    const values = await fetchAmazonValues();
+    const agg = aggregateAmazon(values, startDate, endDate);
+    renderAmazonTable(agg);
+
+    const evalRes = evaluateStepTarget(agg.totals, startDate, endDate);
+    renderStepBadge(evalRes, startDate, endDate);
+  }catch(err){
+    console.error(err);
+    alert("Could not load Amazon data. Check console for details.");
+  }
+}
+
+// wire up
+(function initAmazonUI(){
+  const applyBtn = document.getElementById("amzApply");
+  const exportBtn = document.getElementById("amzExport");
+  if(!applyBtn) return;
+
+  setAmazonDefaultDates();
+  applyBtn.addEventListener("click", loadAmazonSales);
+  exportBtn.addEventListener("click", exportAmazonCSV);
+
+  loadAmazonSales();
+})();
+</script>
+
 </body>
 </html>
+
+
+
+
