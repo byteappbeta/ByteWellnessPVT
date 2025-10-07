@@ -111,6 +111,36 @@
   </table>
   <button class="btn" onclick="showSection('salesOverview')">Back to Overview</button>
 </div>
+  <!-- AMAZON: Sales Overview Tab Content -->
+<div id="amazonSales" class="container hidden">
+  <h2 style="font-weight:700; text-align:center; margin-top:20px; color:#1C39BB; text-transform:uppercase;">
+    Amazon Sales
+  </h2>
+
+  <!-- Date Range Filter -->
+  <div style="display:flex; gap:12px; align-items:center; justify-content:center; margin:14px 0;">
+    <label for="amzStart" style="font-weight:600;">From:</label>
+    <input type="date" id="amzStart" style="padding:8px; border-radius:8px; border:1px solid #ccc;">
+    <label for="amzEnd" style="font-weight:600;">To:</label>
+    <input type="date" id="amzEnd" style="padding:8px; border-radius:8px; border:1px solid #ccc;">
+
+    <button id="amzApply" class="btn-back" style="padding:10px 16px;">Apply</button>
+    <button id="amzExport" class="btn-back" style="padding:10px 16px; background:#0f915a;">Export CSV</button>
+  </div>
+
+  <!-- STEP Premium Target badge -->
+  <div id="amzStepWrap" style="display:flex; align-items:center; justify-content:center; margin:6px 0 14px;">
+    <span id="amzStepBadge" style="padding:8px 12px; border-radius:999px; font-weight:700; text-transform:uppercase;"></span>
+    <span id="amzStepDetail" style="margin-left:10px; font-weight:600; color:#555;"></span>
+  </div>
+
+  <!-- Table -->
+  <table id="amazonTable">
+    <thead></thead>
+    <tbody></tbody>
+    <tfoot></tfoot>
+  </table>
+</div>
 
 <script>
 /* ====== CONFIG ====== */
@@ -370,7 +400,240 @@ document.addEventListener("DOMContentLoaded", ()=>{
 const SECTIONS=["home","inventory","warehouse","sales","salesOverview","salesShare","blinkit"];
 function showSection(id){ SECTIONS.forEach(s=>document.getElementById(s).classList.add("hidden")); document.getElementById(id).classList.remove("hidden"); }
 </script>
+  <script>
+/* ====== AMAZON (Website Aggregation) ====== */
+
+const AMAZON_SHEET_ID = "PUT_YOUR_AMAZON_SHEET_ID_HERE"; // <- set this
+const AMAZON_RANGE = "sheet1"; // tab name in your Amazon sheet
+
+// --- date helpers
+function fmtYMD(d){ const m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0"); return `${d.getFullYear()}-${m}-${day}`;}
+function parseSheetDate(val){
+  if(!val) return null;
+  const s=String(val).trim();
+  if(/^\d{2}-\d{2}-\d{4}$/.test(s)){ const [dd,mm,yyyy]=s.split("-"); return new Date(+yyyy,+mm-1,+dd); }
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)){ const [y,m,d]=s.split("-"); return new Date(+y,+m-1,+d); }
+  const d=new Date(s); return isNaN(d.getTime())?null:d;
+}
+function setAmazonDefaultDates(){
+  const end=new Date(); end.setDate(end.getDate()-1);
+  const start=new Date(end);
+  document.getElementById("amzStart").value = fmtYMD(start);
+  document.getElementById("amzEnd").value   = fmtYMD(end);
+}
+
+// number helpers
+function toInt(n){ const x = Number(n); return isNaN(x)?0:Math.round(x); }
+function moneyInt(n){ return toInt(n).toString(); }
+
+// fetch values from Google Sheets
+async function fetchAmazonValues(){
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${AMAZON_SHEET_ID}/values/${encodeURIComponent(AMAZON_RANGE)}?key=${API_KEY}`;
+  const res = await fetch(url);
+  const json = await res.json();
+  if(!json.values) throw new Error("No values from Amazon sheet");
+  return json.values;
+}
+
+// aggregation
+function aggregateAmazon(values, startDate, endDate){
+  if(values.length<2) return { rows:[], totals:{qty:0,salesPos:0,rtoQty:0,refundsAbs:0} };
+
+  const headers = values[0].map(h=>String(h).trim().toLowerCase());
+  const rows    = values.slice(1);
+
+  const idxDate   = headers.indexOf("date");
+  const idxType   = headers.indexOf("type");
+  const idxSku    = headers.indexOf("sku");
+  const idxQty    = headers.indexOf("qty");
+  const idxSales  = headers.indexOf("sales(-gst)");
+
+  if(idxDate===-1 || idxType===-1 || idxSku===-1 || idxQty===-1 || idxSales===-1){
+    throw new Error("Amazon sheet missing one of required headers");
+  }
+
+  const endInclusive = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23,59,59,999);
+
+  const bySku = new Map();
+
+  rows.forEach(r=>{
+    const d = parseSheetDate(r[idxDate]); if(!d) return;
+    if(d < startDate || d > endInclusive) return;
+
+    const type  = (r[idxType] || "").toString().trim().toLowerCase();
+    const sku   = (r[idxSku]  || "").toString().trim();
+    const qty   = toInt(r[idxQty]);
+    const sales = Number((r[idxSales] || "0").toString().replace(/,/g,""));
+
+    if(!sku) return;
+
+    if(!bySku.has(sku)){
+      bySku.set(sku, { sku, qtyOrder:0, salesPos:0, rtoQty:0, refundsAbs:0 });
+    }
+    const rec = bySku.get(sku);
+
+    if(type === "order"){
+      rec.qtyOrder += qty;
+      if(sales > 0) rec.salesPos += sales;
+    } else if(type === "refund"){
+      rec.rtoQty += Math.abs(qty);
+      if(sales < 0) rec.refundsAbs += Math.abs(sales);
+    }
+  });
+
+  const out = [];
+  let tQty=0, tSales=0, tRto=0, tRefunds=0;
+
+  for(const rec of bySku.values()){
+    out.push({ sku: rec.sku, qty: rec.qtyOrder, sales: rec.salesPos, rto: rec.rtoQty, refunds: rec.refundsAbs });
+    tQty     += rec.qtyOrder;
+    tSales   += rec.salesPos;
+    tRto     += rec.rtoQty;
+    tRefunds += rec.refundsAbs;
+  }
+
+  out.sort((a,b)=> b.sales - a.sales);
+
+  return { rows: out, totals:{qty:tQty, salesPos:tSales, rtoQty:tRto, refundsAbs:tRefunds} };
+}
+
+// STEP Premium
+function evaluateStepTarget(totals, startDate, endDate){
+  const targetSalesPerDay = 55555;
+  const targetQtyPerDay   = 112;
+
+  const s = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+  const e = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+  const days = Math.floor((e - s)/(1000*60*60*24)) + 1;
+
+  const salesTarget = targetSalesPerDay * days;
+  const qtyTarget   = targetQtyPerDay   * days;
+  const netSales = totals.salesPos - totals.refundsAbs;
+
+  const fulfilled = (netSales >= salesTarget) || (totals.qty >= qtyTarget);
+
+  return { fulfilled, days };
+}
+
+// render
+function renderAmazonTable(agg){
+  const tbl = document.getElementById("amazonTable");
+  const thead = tbl.querySelector("thead");
+  const tbody = tbl.querySelector("tbody");
+  const tfoot = tbl.querySelector("tfoot");
+
+  thead.innerHTML = `
+    <tr>
+      <th>Sku</th>
+      <th>Qty</th>
+      <th>Sales(-GST)</th>
+      <th>RTO</th>
+      <th>Refunds</th>
+    </tr>
+  `;
+
+  let bodyHTML = "";
+  agg.rows.forEach(r=>{
+    bodyHTML += `
+      <tr>
+        <td>${r.sku}</td>
+        <td>${r.qty}</td>
+        <td>${moneyInt(r.sales)}</td>
+        <td>${r.rto}</td>
+        <td>${moneyInt(r.refunds)}</td>
+      </tr>
+    `;
+  });
+  tbody.innerHTML = bodyHTML || `<tr><td colspan="5">No data in this date range.</td></tr>`;
+
+  tfoot.innerHTML = `
+    <tr>
+      <td><b>TOTAL</b></td>
+      <td><b>${agg.totals.qty}</b></td>
+      <td><b>${moneyInt(agg.totals.salesPos)}</b></td>
+      <td><b>${agg.totals.rtoQty}</b></td>
+      <td><b>${moneyInt(agg.totals.refundsAbs)}</b></td>
+    </tr>
+  `;
+}
+
+function renderStepBadge(evalRes, startDate, endDate){
+  const badge = document.getElementById("amzStepBadge");
+  const detail = document.getElementById("amzStepDetail");
+
+  if(evalRes.fulfilled){
+    badge.textContent = "STEP Premium Target – Fulfilled";
+    badge.style.background = "#0f915a"; badge.style.color = "white";
+  }else{
+    badge.textContent = "STEP Premium Target – Unfulfilled";
+    badge.style.background = "#ff4d4f"; badge.style.color = "white";
+  }
+
+  // Date formatting
+  const options = { day:"2-digit", month:"2-digit", year:"numeric" };
+  const startStr = startDate.toLocaleDateString("en-GB", options);
+  const endStr   = endDate.toLocaleDateString("en-GB", options);
+
+  if(evalRes.days === 1){
+    detail.textContent = `(${startStr})`;
+  }else{
+    detail.textContent = `(${startStr} → ${endStr})`;
+  }
+}
+
+// export
+function exportAmazonCSV(){
+  const table = document.getElementById("amazonTable");
+  let csv = "";
+  table.querySelectorAll("tr").forEach(tr=>{
+    const cols = tr.querySelectorAll("th,td");
+    const line = Array.from(cols).map(td => `"${td.innerText.replace(/"/g,'""')}"`).join(",");
+    csv += line + "\n";
+  });
+  const blob = new Blob([csv], {type:"text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "amazon_sales.csv"; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// main loader
+async function loadAmazonSales(){
+  try{
+    const startVal = document.getElementById("amzStart").value;
+    const endVal   = document.getElementById("amzEnd").value;
+    const startDate = new Date(startVal);
+    const endDate   = new Date(endVal);
+    if(!startDate || !endDate){ alert("Please select a date range."); return; }
+
+    const values = await fetchAmazonValues();
+    const agg = aggregateAmazon(values, startDate, endDate);
+    renderAmazonTable(agg);
+
+    const evalRes = evaluateStepTarget(agg.totals, startDate, endDate);
+    renderStepBadge(evalRes, startDate, endDate);
+  }catch(err){
+    console.error(err);
+    alert("Could not load Amazon data. Check console for details.");
+  }
+}
+
+// wire up
+(function initAmazonUI(){
+  const applyBtn = document.getElementById("amzApply");
+  const exportBtn = document.getElementById("amzExport");
+  if(!applyBtn) return;
+
+  setAmazonDefaultDates();
+  applyBtn.addEventListener("click", loadAmazonSales);
+  exportBtn.addEventListener("click", exportAmazonCSV);
+
+  loadAmazonSales();
+})();
+</script>
+
 </body>
 </html>
+
 
 
