@@ -116,7 +116,6 @@
   <h2 style="font-weight:700; text-align:center; margin-top:20px; color:#1C39BB; text-transform:uppercase;">
     Amazon Sales
   </h2>
-  <button class="btn-back" onclick="showSection('salesOverview')">Back to Overview</button> </div>
 
   <!-- Date Range Filter -->
   <div style="display:flex; gap:12px; align-items:center; justify-content:center; margin:14px 0;">
@@ -141,8 +140,8 @@
     <tbody></tbody>
     <tfoot></tfoot>
   </table>
+  <button class="btn-back" onclick="showSection('salesOverview')">Back to Overview</button>
 </div>
-
 <script>
 /* ====== CONFIG ====== */
 const API_KEY = "AIzaSyD6yREIVE1b8hq0kiYqFoJBfsLzPiGGv4k";
@@ -634,6 +633,7 @@ const endDate   = new Date(new Date(endVal).setHours(0,0,0,0));
 
 </body>
 </html>
+
 
 
 
