@@ -127,10 +127,9 @@
 </div>
 
   <!-- STEP Premium Target badge -->
-  <div id="amzStepWrap" style="display:flex; align-items:center; justify-content:center; margin:6px 0 14px;">
-    <span id="amzStepBadge" style="padding:8px 12px; border-radius:999px; font-weight:700; text-transform:uppercase;"></span>
-    <span id="amzStepDetail" style="margin-left:10px; font-weight:600; color:#555;"></span>
-  </div>
+<div id="amzStepWrap" style="display:flex; align-items:center; justify-content:center; margin:6px 0 14px;">
+  <span id="amzStepBadge" style="padding:8px 12px; border-radius:999px; font-weight:700; text-transform:uppercase;"></span>
+</div>
 
   <!-- Table -->
   <table id="amazonTable">
@@ -555,28 +554,25 @@ function renderAmazonTable(agg){
     </tr>
   `;
 }
-
 function renderStepBadge(evalRes, startDate, endDate){
   const badge = document.getElementById("amzStepBadge");
-  const detail = document.getElementById("amzStepDetail");
 
   if(evalRes.fulfilled){
-    badge.textContent = "STEP Premium Target – Fulfilled";
-    badge.style.background = "#0f915a"; badge.style.color = "white";
+    if(evalRes.days === 1){
+      badge.textContent = "STEP Premium Target – Fulfilled (For applied date)";
+    }else{
+      badge.textContent = "STEP Premium Target – Fulfilled (For applied date range)";
+    }
+    badge.style.background = "#0f915a"; 
+    badge.style.color = "white";
   }else{
-    badge.textContent = "STEP Premium Target – Unfulfilled";
-    badge.style.background = "#ff4d4f"; badge.style.color = "white";
-  }
-
-  // Date formatting
-  const options = { day:"2-digit", month:"2-digit", year:"numeric" };
-  const startStr = startDate.toLocaleDateString("en-GB", options);
-  const endStr   = endDate.toLocaleDateString("en-GB", options);
-
-  if(evalRes.days === 1){
-    detail.textContent = `(${startStr})`;
-  }else{
-    detail.textContent = `(${startStr} → ${endStr})`;
+    if(evalRes.days === 1){
+      badge.textContent = "STEP Premium Target – Unfulfilled (For applied date)";
+    }else{
+      badge.textContent = "STEP Premium Target – Unfulfilled (For applied date range)";
+    }
+    badge.style.background = "#ff4d4f"; 
+    badge.style.color = "white";
   }
 }
 
@@ -633,6 +629,7 @@ const endDate   = new Date(new Date(endVal).setHours(23,59,59,999));  // ✅ mak
 
 </body>
 </html>
+
 
 
 
