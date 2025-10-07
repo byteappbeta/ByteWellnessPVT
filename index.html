@@ -140,6 +140,7 @@
     <tbody></tbody>
     <tfoot></tfoot>
   </table>
+  <button class="btn" onclick="showSection('salesOverview')">Back to Overview</button>
 </div>
 
 <script>
@@ -602,8 +603,8 @@ async function loadAmazonSales(){
   try{
     const startVal = document.getElementById("amzStart").value;
     const endVal   = document.getElementById("amzEnd").value;
-    const startDate = new Date(startVal);
-    const endDate   = new Date(endVal);
+    const startDate = new Date(new Date(startVal).setHours(0,0,0,0));
+const endDate   = new Date(new Date(endVal).setHours(23,59,59,999));  // ✅ make inclusive
     if(!startDate || !endDate){ alert("Please select a date range."); return; }
 
     const values = await fetchAmazonValues();
@@ -634,6 +635,7 @@ async function loadAmazonSales(){
 
 </body>
 </html>
+
 
 
 
