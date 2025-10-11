@@ -155,6 +155,18 @@ const warehouseSheets = {
   "Amazon": "Amazon"
 };
 
+async function fetchWarehouseData(sheetName) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${WAREHOUSE_SHEET_ID}/values/${encodeURIComponent(sheetName)}?key=${API_KEY}`;
+  const response = await fetch(url);
+  const json = await response.json();
+  const values = json.values || [];
+  if (values.length === 0) return { headers: [], data: [] };
+  
+  const headers = values[0];
+  const data = values.slice(1);
+  return { headers, data };
+}
+
 async function showWarehouse(name) {
   showSection('warehouse');
   const sheetName = warehouseSheets[name];
@@ -614,6 +626,7 @@ const endDate   = new Date(new Date(endVal).setHours(23,59,59,999));  // ✅ mak
 
 </body>
 </html>
+
 
 
 
