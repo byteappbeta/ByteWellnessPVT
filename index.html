@@ -161,9 +161,11 @@ async function showWarehouse(name) {
   const { headers, data } = await fetchWarehouseData(sheetName);
   const normHeaders = headers.map(h => (h || "").trim().toLowerCase());
 
+  // Update warehouse title
   document.getElementById("warehouseName").innerText = name + " Warehouse";
   const syncedElem = document.getElementById("lastSynced");
 
+  // Detect "Synced At" column
   const syncedIndex = normHeaders.indexOf("synced at");
   let syncedDate = "";
   if (syncedIndex !== -1 && data.length > 0) {
@@ -176,33 +178,39 @@ async function showWarehouse(name) {
       if (parts[0].length === 4) {
         const [yyyy, mm, dd] = firstValue.substring(0, 10).split("-");
         syncedDate = `${dd}-${mm}-${yyyy}`;
-      } else syncedDate = firstValue.substring(0, 10);
+      } else {
+        syncedDate = firstValue.substring(0, 10);
+      }
     }
   }
   syncedElem.innerText = "LAST SYNCED: " + (syncedDate || "N/A");
 
+  // Build table
   const table = document.querySelector("#warehouse table");
   const thead = table.querySelector("thead");
   const tbody = table.querySelector("tbody");
 
+  // Handle empty sheet
   if (data.length === 0) {
     thead.innerHTML = "";
     tbody.innerHTML = `<tr><td colspan="${headers.length || 1}">No data available</td></tr>`;
-    return;
+    return; // ✅ safe — inside function
   }
 
-  // ✅ Display headers directly from the sheet (no manual addition)
+  // Prepare headers
   const displayHeaders = headers.filter((_, i) => i !== syncedIndex);
   thead.innerHTML = "<tr>" + displayHeaders.map(h => `<th>${h}</th>`).join("") + "</tr>";
 
-  // ✅ Directly display rows from sheet (no calculation)
+  // Fill table rows
   tbody.innerHTML = "";
   data.forEach(row => {
     const displayRow = row.filter((_, i) => i !== syncedIndex);
     let rowHTML = "<tr>";
+
     displayRow.forEach((cell, idx) => {
-      // Optional: color-code Days to Stockout if exists
       const header = (displayHeaders[idx] || "").trim().toLowerCase();
+
+      // Highlight Days to Stockout
       if (header === "days to stockout" && cell) {
         const days = parseFloat(cell);
         const threshold = (name === "Amazon") ? 20 : 10;
@@ -212,61 +220,11 @@ async function showWarehouse(name) {
         rowHTML += `<td>${cell || ""}</td>`;
       }
     });
+
     rowHTML += "</tr>";
     tbody.insertAdjacentHTML("beforeend", rowHTML);
   });
-}
-//Days to Stockout
-  syncedElem.innerText = "LAST SYNCED: " + (syncedDate || "N/A");
-
-  const table = document.querySelector("#warehouse table");
-  const thead = table.querySelector("thead");
-  const tbody = table.querySelector("tbody");
-
-  if (data.length === 0) {
-    thead.innerHTML = "";
-    tbody.innerHTML = `<tr><td colspan="${headers.length||1}">No data available</td></tr>`;
-    return;
-  }
-
-  const displayHeaders = headers.filter((_, i) => i !== syncedIndex);
-  if (name !== "Master") displayHeaders.push("Days to Stockout");
-  thead.innerHTML = "<tr>" + displayHeaders.map(h => `<th>${h}</th>`).join("") + "</tr>";
-
-  tbody.innerHTML = "";
-  data.forEach(row => {
-    const displayRow = row.filter((_, i) => i !== syncedIndex);
-    let daysStockout = "N/A";
-    if (name !== "Master") {
-      try {
-        const availableIndex = normHeaders.indexOf("available");
-        const last30Index = normHeaders.indexOf("last 30 days sale");
-        const totalInvIndex = normHeaders.indexOf("total inventory");
-        let baseQty = 0;
-        if (name === "Amazon" && totalInvIndex !== -1) {
-          baseQty = parseFloat((row[totalInvIndex]||"0").replace(/,/g,""));
-        } else if (availableIndex !== -1) {
-          baseQty = parseFloat((row[availableIndex]||"0").replace(/,/g,""));
-        }
-        const last30 = last30Index !== -1 ? parseFloat((row[last30Index]||"0").replace(/,/g,"")) : 0;
-        if (last30 > 0) daysStockout = Math.round((baseQty * 30) / last30);
-      } catch {}
-      displayRow.push(daysStockout);
-    }
-    let rowHTML = "<tr>";
-    displayRow.forEach((cell, idx) => {
-      if (name !== "Master" && idx === displayRow.length - 1 && daysStockout !== "N/A") {
-        const threshold = (name === "Amazon") ? 20 : 10;
-        const color = (parseFloat(daysStockout) < threshold) ? "#FF4D4F" : "#333";
-        rowHTML += `<td style="color:${color}; font-weight:600;">${cell}</td>`;
-      } else {
-        rowHTML += `<td>${cell||""}</td>`;
-      }
-    });
-    rowHTML += "</tr>";
-    tbody.insertAdjacentHTML("beforeend", rowHTML);
-  });
-}
+} // ✅ clean ending
 
 /* ====== BLINKIT ====== */
 
@@ -656,6 +614,7 @@ const endDate   = new Date(new Date(endVal).setHours(23,59,59,999));  // ✅ mak
 
 </body>
 </html>
+
 
 
 
