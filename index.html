@@ -396,10 +396,10 @@ const SECTIONS=["home","inventory","warehouse","sales","salesOverview","salesSha
 function showSection(id){ SECTIONS.forEach(s=>document.getElementById(s).classList.add("hidden")); document.getElementById(id).classList.remove("hidden"); }
 </script>
   <script>
-/* ====== AMAZON (Website Aggregation) ====== */
+/* ====== AMAZON (Website Aggregation with Days to Stockout) ====== */
 
-const AMAZON_SHEET_ID = "1e4Vdkw2Ms0dCxskAKbUfLk3ttqeFT_nbQDhsPtKWWhA"; // <- set this
-const AMAZON_RANGE = "sheet1"; // tab name in your Amazon sheet
+const AMAZON_SHEET_ID = "1e4Vdkw2Ms0dCxskAKbUfLk3ttqeFT_nbQDhsPtKWWhA"; // Sales sheet
+const AMAZON_RANGE = "sheet1"; // tab name in your Amazon sales sheet
 
 // --- date helpers
 function fmtYMD(d){ const m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0"); return `${d.getFullYear()}-${m}-${day}`;}
@@ -421,7 +421,7 @@ function setAmazonDefaultDates(){
 function toInt(n){ const x = Number(n); return isNaN(x)?0:Math.round(x); }
 function moneyInt(n){ return toInt(n).toString(); }
 
-// fetch values from Google Sheets
+// --- fetch Amazon sales
 async function fetchAmazonValues(){
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${AMAZON_SHEET_ID}/values/${encodeURIComponent(AMAZON_RANGE)}?key=${API_KEY}`;
   const res = await fetch(url);
@@ -430,7 +430,43 @@ async function fetchAmazonValues(){
   return json.values;
 }
 
-// aggregation
+/* ====== NEW: Fetch Days to Stockout from Warehouse Sheet ====== */
+async function fetchAmazonStockData(){
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${WAREHOUSE_SHEET_ID}/values/Amazon?key=${API_KEY}`;
+  const res = await fetch(url);
+  const json = await res.json();
+  const values = json.values || [];
+  if (values.length === 0) return new Map();
+
+  const headers = values[0].map(h => (h || "").trim().toLowerCase());
+  const skuIndex = headers.indexOf("sku");
+  const daysIndex = headers.indexOf("days to stockout");
+
+  if (skuIndex === -1 || daysIndex === -1) {
+    console.warn("⚠️ 'SKU' or 'Days to Stockout' column not found in Warehouse Amazon tab.");
+    return new Map();
+  }
+
+  const stockMap = new Map();
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    const sku = (row[skuIndex] || "").trim();
+    const days = (row[daysIndex] || "").trim();
+    if (sku) stockMap.set(sku, days);
+  }
+  return stockMap;
+}
+
+/* ====== NEW: Merge Days to Stockout ====== */
+function mergeDaysToStockout(agg, stockMap){
+  agg.rows.forEach(row => {
+    const sku = row.sku.trim();
+    row.daysToStockout = stockMap.get(sku) || "—";
+  });
+  return agg;
+}
+
+// --- aggregation logic
 function aggregateAmazon(values, startDate, endDate){
   if(values.length<2) return { rows:[], totals:{qty:0,salesPos:0,rtoQty:0,refundsAbs:0} };
 
@@ -448,7 +484,6 @@ function aggregateAmazon(values, startDate, endDate){
   }
 
   const endInclusive = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23,59,59,999);
-
   const bySku = new Map();
 
   rows.forEach(r=>{
@@ -492,7 +527,7 @@ function aggregateAmazon(values, startDate, endDate){
   return { rows: out, totals:{qty:tQty, salesPos:tSales, rtoQty:tRto, refundsAbs:tRefunds} };
 }
 
-// STEP Premium
+// --- STEP Premium badge
 function evaluateStepTarget(totals, startDate, endDate){
   const targetSalesPerDay = 55000;
   const targetQtyPerDay   = 111;
@@ -510,7 +545,7 @@ function evaluateStepTarget(totals, startDate, endDate){
   return { fulfilled, days };
 }
 
-// render
+// --- render Amazon table
 function renderAmazonTable(agg){
   const tbl = document.getElementById("amazonTable");
   const thead = tbl.querySelector("thead");
@@ -524,11 +559,14 @@ function renderAmazonTable(agg){
       <th>Sales(-GST)</th>
       <th>RTO</th>
       <th>Refunds</th>
+      <th>Days to Stockout</th>
     </tr>
   `;
 
   let bodyHTML = "";
   agg.rows.forEach(r=>{
+    const days = parseFloat(r.daysToStockout);
+    const color = !isNaN(days) && days < 20 ? "#FF4D4F" : "#333";
     bodyHTML += `
       <tr>
         <td>${r.sku}</td>
@@ -536,10 +574,12 @@ function renderAmazonTable(agg){
         <td>${moneyInt(r.sales)}</td>
         <td>${r.rto}</td>
         <td>${moneyInt(r.refunds)}</td>
+        <td style="color:${color}; font-weight:600;">${r.daysToStockout}</td>
       </tr>
     `;
   });
-  tbody.innerHTML = bodyHTML || `<tr><td colspan="5">No data in this date range.</td></tr>`;
+
+  tbody.innerHTML = bodyHTML || `<tr><td colspan="6">No data in this date range.</td></tr>`;
 
   tfoot.innerHTML = `
     <tr>
@@ -548,32 +588,30 @@ function renderAmazonTable(agg){
       <td><b>${moneyInt(agg.totals.salesPos)}</b></td>
       <td><b>${agg.totals.rtoQty}</b></td>
       <td><b>${moneyInt(agg.totals.refundsAbs)}</b></td>
+      <td></td>
     </tr>
   `;
 }
+
+// --- STEP badge render
 function renderStepBadge(evalRes, startDate, endDate){
   const badge = document.getElementById("amzStepBadge");
 
   if(evalRes.fulfilled){
-    if(evalRes.days === 1){
-      badge.textContent = "STEP Premium Target – Fulfilled (For applied date)";
-    }else{
-      badge.textContent = "STEP Premium Target – Fulfilled (For applied date range)";
-    }
+    badge.textContent = evalRes.days === 1
+      ? "STEP Premium Target – Fulfilled (For applied date)"
+      : "STEP Premium Target – Fulfilled (For applied date range)";
     badge.style.background = "#0f915a"; 
-    badge.style.color = "white";
   }else{
-    if(evalRes.days === 1){
-      badge.textContent = "STEP Premium Target – Unfulfilled (For applied date)";
-    }else{
-      badge.textContent = "STEP Premium Target – Unfulfilled (For applied date range)";
-    }
+    badge.textContent = evalRes.days === 1
+      ? "STEP Premium Target – Unfulfilled (For applied date)"
+      : "STEP Premium Target – Unfulfilled (For applied date range)";
     badge.style.background = "#ff4d4f"; 
-    badge.style.color = "white";
   }
+  badge.style.color = "white";
 }
 
-// export
+// --- export CSV
 function exportAmazonCSV(){
   const table = document.getElementById("amazonTable");
   let csv = "";
@@ -589,28 +627,39 @@ function exportAmazonCSV(){
   URL.revokeObjectURL(url);
 }
 
-// main loader
+// --- main loader
 async function loadAmazonSales(){
   try{
     const startVal = document.getElementById("amzStart").value;
     const endVal   = document.getElementById("amzEnd").value;
     const startDate = new Date(new Date(startVal).setHours(0,0,0,0));
-const endDate   = new Date(new Date(endVal).setHours(23,59,59,999));  // ✅ make inclusive
+    const endDate   = new Date(new Date(endVal).setHours(23,59,59,999));
     if(!startDate || !endDate){ alert("Please select a date range."); return; }
 
-    const values = await fetchAmazonValues();
-    const agg = aggregateAmazon(values, startDate, endDate);
+    // Fetch sales + stock data
+    const [amazonValues, stockMap] = await Promise.all([
+      fetchAmazonValues(),
+      fetchAmazonStockData()
+    ]);
+
+    // Aggregate + merge
+    let agg = aggregateAmazon(amazonValues, startDate, endDate);
+    agg = mergeDaysToStockout(agg, stockMap);
+
+    // Render
     renderAmazonTable(agg);
 
+    // STEP Badge
     const evalRes = evaluateStepTarget(agg.totals, startDate, endDate);
     renderStepBadge(evalRes, startDate, endDate);
+
   }catch(err){
     console.error(err);
     alert("Could not load Amazon data. Check console for details.");
   }
 }
 
-// wire up
+// --- initialize UI
 (function initAmazonUI(){
   const applyBtn = document.getElementById("amzApply");
   const exportBtn = document.getElementById("amzExport");
@@ -622,10 +671,12 @@ const endDate   = new Date(new Date(endVal).setHours(23,59,59,999));  // ✅ mak
 
   loadAmazonSales();
 })();
+
 </script>
 
 </body>
 </html>
+
 
 
 
