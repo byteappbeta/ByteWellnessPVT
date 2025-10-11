@@ -166,30 +166,7 @@ async function fetchWarehouseData(sheetName) {
   return { headers, data };
 }
 
-async function showWarehouse(name) {
-  showSection('warehouse');
-  const sheetName = warehouseSheets[name];
-  const { headers, data } = await fetchWarehouseData(sheetName);
-  const normHeaders = headers.map(h => (h||"").trim().toLowerCase());
-
-  document.getElementById("warehouseName").innerText = name + " Warehouse";
-  const syncedElem = document.getElementById("lastSynced");
-
-  const syncedIndex = normHeaders.indexOf("synced at");
-  let syncedDate = "";
-  if (syncedIndex !== -1 && data.length > 0) {
-    const firstValue = (data[0][syncedIndex] || "").trim();
-    if (firstValue.includes("/")) {
-      const [dd, mm, yyyy] = firstValue.split("/");
-      if (dd && mm && yyyy) syncedDate = `${dd}-${mm}-${yyyy}`;
-    } else if (firstValue.includes("-")) {
-      const parts = firstValue.split("-");
-      if (parts[0].length === 4) {
-        const [yyyy, mm, dd] = firstValue.substring(0, 10).split("-");
-        syncedDate = `${dd}-${mm}-${yyyy}`;
-      } else syncedDate = firstValue.substring(0, 10);
-    }
-  }
+Days to Stockout
   syncedElem.innerText = "LAST SYNCED: " + (syncedDate || "N/A");
 
   const table = document.querySelector("#warehouse table");
@@ -629,6 +606,7 @@ const endDate   = new Date(new Date(endVal).setHours(23,59,59,999));  // ✅ mak
 
 </body>
 </html>
+
 
 
 
