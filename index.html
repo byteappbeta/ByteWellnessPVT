@@ -155,17 +155,67 @@ const warehouseSheets = {
   "Amazon": "Amazon"
 };
 
-async function fetchWarehouseData(sheetName) {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${WAREHOUSE_SHEET_ID}/values/${encodeURIComponent(sheetName)}?key=${API_KEY}`;
-  const response = await fetch(url);
-  const json = await response.json();
-  const values = json.values || [];
-  if(values.length === 0) return { headers: [], data: [] };
-  const headers = values[0];
-  const data = values.slice(1);
-  return { headers, data };
-}
+async function showWarehouse(name) {
+  showSection('warehouse');
+  const sheetName = warehouseSheets[name];
+  const { headers, data } = await fetchWarehouseData(sheetName);
+  const normHeaders = headers.map(h => (h || "").trim().toLowerCase());
 
+  document.getElementById("warehouseName").innerText = name + " Warehouse";
+  const syncedElem = document.getElementById("lastSynced");
+
+  const syncedIndex = normHeaders.indexOf("synced at");
+  let syncedDate = "";
+  if (syncedIndex !== -1 && data.length > 0) {
+    const firstValue = (data[0][syncedIndex] || "").trim();
+    if (firstValue.includes("/")) {
+      const [dd, mm, yyyy] = firstValue.split("/");
+      if (dd && mm && yyyy) syncedDate = `${dd}-${mm}-${yyyy}`;
+    } else if (firstValue.includes("-")) {
+      const parts = firstValue.split("-");
+      if (parts[0].length === 4) {
+        const [yyyy, mm, dd] = firstValue.substring(0, 10).split("-");
+        syncedDate = `${dd}-${mm}-${yyyy}`;
+      } else syncedDate = firstValue.substring(0, 10);
+    }
+  }
+  syncedElem.innerText = "LAST SYNCED: " + (syncedDate || "N/A");
+
+  const table = document.querySelector("#warehouse table");
+  const thead = table.querySelector("thead");
+  const tbody = table.querySelector("tbody");
+
+  if (data.length === 0) {
+    thead.innerHTML = "";
+    tbody.innerHTML = `<tr><td colspan="${headers.length || 1}">No data available</td></tr>`;
+    return;
+  }
+
+  // ✅ Display headers directly from the sheet (no manual addition)
+  const displayHeaders = headers.filter((_, i) => i !== syncedIndex);
+  thead.innerHTML = "<tr>" + displayHeaders.map(h => `<th>${h}</th>`).join("") + "</tr>";
+
+  // ✅ Directly display rows from sheet (no calculation)
+  tbody.innerHTML = "";
+  data.forEach(row => {
+    const displayRow = row.filter((_, i) => i !== syncedIndex);
+    let rowHTML = "<tr>";
+    displayRow.forEach((cell, idx) => {
+      // Optional: color-code Days to Stockout if exists
+      const header = (displayHeaders[idx] || "").trim().toLowerCase();
+      if (header === "days to stockout" && cell) {
+        const days = parseFloat(cell);
+        const threshold = (name === "Amazon") ? 20 : 10;
+        const color = days < threshold ? "#FF4D4F" : "#333";
+        rowHTML += `<td style="color:${color}; font-weight:600;">${cell}</td>`;
+      } else {
+        rowHTML += `<td>${cell || ""}</td>`;
+      }
+    });
+    rowHTML += "</tr>";
+    tbody.insertAdjacentHTML("beforeend", rowHTML);
+  });
+}
 Days to Stockout
   syncedElem.innerText = "LAST SYNCED: " + (syncedDate || "N/A");
 
@@ -606,6 +656,7 @@ const endDate   = new Date(new Date(endVal).setHours(23,59,59,999));  // ✅ mak
 
 </body>
 </html>
+
 
 
 
