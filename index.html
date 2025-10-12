@@ -719,13 +719,14 @@ function parseFlipkartDate(val) {
 }
 
 function toNum(n) {
-  const x = parseFloat(String(n).replace(/,/g, ""));
+  const x = parseFloat(String(n || "").replace(/,/g, ""));
   return isNaN(x) ? 0 : x;
 }
 
-/* ---- Fetch any tab ---- */
+/* ---- Fetch any tab (use explicit range to avoid 400) ---- */
 async function fetchFlipkartTab(tabName) {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${FLIPKART_SHEET_ID}/values/${encodeURIComponent(tabName)}?key=${API_KEY}`;
+  const range = `${encodeURIComponent(tabName)}!A1:Z`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${FLIPKART_SHEET_ID}/values/${range}?key=${API_KEY}`;
   const res = await fetch(url);
   const json = await res.json();
   return json.values || [];
@@ -733,7 +734,8 @@ async function fetchFlipkartTab(tabName) {
 
 /* ---- Fetch warehouse data ---- */
 async function fetchBangaloreStock() {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${WAREHOUSE_SHEET_ID}/values/${encodeURIComponent(FK_WAREHOUSE_TAB)}?key=${API_KEY}`;
+  const range = `${encodeURIComponent(FK_WAREHOUSE_TAB)}!A1:Z`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${WAREHOUSE_SHEET_ID}/values/${range}?key=${API_KEY}`;
   const res = await fetch(url);
   const json = await res.json();
   const values = json.values || [];
@@ -742,6 +744,10 @@ async function fetchBangaloreStock() {
     const headers = values[0].map(h => (h || "").trim().toLowerCase());
     const skuIdx = headers.indexOf("sku");
     const daysIdx = headers.indexOf("days to stockout");
+    if (skuIdx === -1 || daysIdx === -1) {
+      // header mismatch: return empty map
+      return map;
+    }
     for (let i = 1; i < values.length; i++) {
       const row = values[i];
       const sku = (row[skuIdx] || "").trim();
@@ -754,11 +760,11 @@ async function fetchBangaloreStock() {
 
 /* ---- Combine Sales + RTO + Warehouse ---- */
 function combineFlipkartData(salesVals, rtoVals, stockMap, startDate, endDate) {
-  if (salesVals.length < 2 && rtoVals.length < 2) return [];
+  if ((salesVals || []).length < 2 && (rtoVals || []).length < 2) return [];
 
-  // Identify headers
-  const sHead = salesVals[0].map(h => h.toLowerCase());
-  const rHead = rtoVals[0].map(h => h.toLowerCase());
+  // Identify headers (safely)
+  const sHead = (salesVals[0] || []).map(h => (h || "").toString().trim().toLowerCase());
+  const rHead = (rtoVals[0] || []).map(h => (h || "").toString().trim().toLowerCase());
 
   const sDateIdx = sHead.indexOf("ordered on");
   const sSkuIdx = sHead.indexOf("sku");
@@ -772,40 +778,47 @@ function combineFlipkartData(salesVals, rtoVals, stockMap, startDate, endDate) {
 
   const byKey = new Map();
 
+  // inclusive end-of-day for filtering
+  const endInclusive = endDate ? new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999) : null;
+
   // --- SALES aggregation ---
-  for (let i = 1; i < salesVals.length; i++) {
-    const row = salesVals[i];
-    const d = parseFlipkartDate(row[sDateIdx]);
-    if (!d) continue;
-    if (startDate && d < startDate) continue;
-    if (endDate && d > endDate) continue;
+  if (salesVals && salesVals.length > 1 && sDateIdx !== -1 && sSkuIdx !== -1) {
+    for (let i = 1; i < salesVals.length; i++) {
+      const row = salesVals[i];
+      const d = parseFlipkartDate(row[sDateIdx]);
+      if (!d) continue;
+      if (startDate && d < startDate) continue;
+      if (endInclusive && d > endInclusive) continue;
 
-    const sku = (row[sSkuIdx] || "").trim();
-    if (!sku) continue;
+      const sku = (row[sSkuIdx] || "").trim();
+      if (!sku) continue;
 
-    const key = `${sku}_${d.toDateString()}`;
-    if (!byKey.has(key)) byKey.set(key, { date: d, sku, qty: 0, gross: 0, rto: 0, refund: 0 });
-    const rec = byKey.get(key);
-    rec.qty += toNum(row[sQtyIdx]);
-    rec.gross += toNum(row[sAmtIdx]);
+      const key = `${sku}_${d.toDateString()}`;
+      if (!byKey.has(key)) byKey.set(key, { date: d, sku, qty: 0, gross: 0, rto: 0, refund: 0 });
+      const rec = byKey.get(key);
+      rec.qty += toNum(row[sQtyIdx]);
+      rec.gross += toNum(row[sAmtIdx]);
+    }
   }
 
   // --- RTO aggregation ---
-  for (let i = 1; i < rtoVals.length; i++) {
-    const row = rtoVals[i];
-    const d = parseFlipkartDate(row[rDateIdx]);
-    if (!d) continue;
-    if (startDate && d < startDate) continue;
-    if (endDate && d > endDate) continue;
+  if (rtoVals && rtoVals.length > 1 && rDateIdx !== -1 && rSkuIdx !== -1) {
+    for (let i = 1; i < rtoVals.length; i++) {
+      const row = rtoVals[i];
+      const d = parseFlipkartDate(row[rDateIdx]);
+      if (!d) continue;
+      if (startDate && d < startDate) continue;
+      if (endInclusive && d > endInclusive) continue;
 
-    const sku = (row[rSkuIdx] || "").trim();
-    if (!sku) continue;
+      const sku = (row[rSkuIdx] || "").trim();
+      if (!sku) continue;
 
-    const key = `${sku}_${d.toDateString()}`;
-    if (!byKey.has(key)) byKey.set(key, { date: d, sku, qty: 0, gross: 0, rto: 0, refund: 0 });
-    const rec = byKey.get(key);
-    rec.rto += toNum(row[rQtyIdx]);
-    rec.refund += toNum(row[rAmtIdx]);
+      const key = `${sku}_${d.toDateString()}`;
+      if (!byKey.has(key)) byKey.set(key, { date: d, sku, qty: 0, gross: 0, rto: 0, refund: 0 });
+      const rec = byKey.get(key);
+      rec.rto += toNum(row[rQtyIdx]);
+      rec.refund += toNum(row[rAmtIdx]);
+    }
   }
 
   // --- Merge Days to Stockout ---
@@ -815,8 +828,8 @@ function combineFlipkartData(salesVals, rtoVals, stockMap, startDate, endDate) {
     rows.push(rec);
   });
 
-  // --- Sort by date descending
-  rows.sort((a, b) => b.date - a.date);
+  // --- Sort by highest Qty descending
+  rows.sort((a, b) => b.qty - a.qty);
 
   return rows;
 }
@@ -830,7 +843,6 @@ function renderFlipkartTable(rows) {
 
   thead.innerHTML = `
     <tr>
-      <th>Date</th>
       <th>SKU</th>
       <th>Qty</th>
       <th>Gross</th>
@@ -843,19 +855,32 @@ function renderFlipkartTable(rows) {
   let totalQty = 0, totalGross = 0, totalRto = 0, totalRefund = 0;
   let bodyHTML = "";
 
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6">No data found for this range.</td></tr>`;
+    tfoot.innerHTML = `
+      <tr>
+        <td><b>TOTAL</b></td>
+        <td><b>0</b></td>
+        <td><b>0</b></td>
+        <td><b>0</b></td>
+        <td><b>0</b></td>
+        <td></td>
+      </tr>
+    `;
+    return;
+  }
+
   rows.forEach(r => {
     totalQty += r.qty;
     totalGross += r.gross;
     totalRto += r.rto;
     totalRefund += r.refund;
 
-    const dStr = r.date.toLocaleDateString("en-GB");
     const days = parseFloat(r.days);
     const color = !isNaN(days) && days < 10 ? "#FF4D4F" : "#333";
 
     bodyHTML += `
       <tr>
-        <td>${dStr}</td>
         <td>${r.sku}</td>
         <td>${r.qty}</td>
         <td>${r.gross.toFixed(0)}</td>
@@ -866,11 +891,10 @@ function renderFlipkartTable(rows) {
     `;
   });
 
-  tbody.innerHTML = bodyHTML || `<tr><td colspan="7">No data found for this range.</td></tr>`;
+  tbody.innerHTML = bodyHTML;
   tfoot.innerHTML = `
     <tr>
       <td><b>TOTAL</b></td>
-      <td></td>
       <td><b>${totalQty}</b></td>
       <td><b>${totalGross.toFixed(0)}</b></td>
       <td><b>${totalRto}</b></td>
@@ -904,7 +928,8 @@ async function loadFlipkartSales() {
     if (!startVal || !endVal) return alert("Please select a date range.");
     const startDate = new Date(startVal);
     const endDate = new Date(endVal);
-    endDate.setHours(23, 59, 59, 999);
+    // endDate used only to compute inclusive end inside combineFlipkartData; we also keep this for clarity
+    endDate.setHours(0, 0, 0, 0);
 
     const [salesVals, rtoVals, stockMap] = await Promise.all([
       fetchFlipkartTab(FK_SALES_TAB),
@@ -937,11 +962,13 @@ async function loadFlipkartSales() {
   applyBtn.addEventListener("click", loadFlipkartSales);
   exportBtn.addEventListener("click", exportFlipkartCSV);
 })();
+
 </script>
 
 
 </body>
 </html>
+
 
 
 
