@@ -961,15 +961,20 @@ endDate.setHours(23, 59, 59, 999); // include the entire end day
   document.getElementById("fkStart").value = yStr;
   document.getElementById("fkEnd").value = yStr;
 
-  applyBtn.addEventListener("click", loadFlipkartSales);
+    applyBtn.addEventListener("click", loadFlipkartSales);
   exportBtn.addEventListener("click", exportFlipkartCSV);
+
+  // ✅ Auto-load yesterday's data on page load
+  loadFlipkartSales();
 })();
+
 
 </script>
 
 
 </body>
 </html>
+
 
 
 
