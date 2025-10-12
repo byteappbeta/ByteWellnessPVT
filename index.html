@@ -782,44 +782,46 @@ function combineFlipkartData(salesVals, rtoVals, stockMap, startDate, endDate) {
   const endInclusive = endDate ? new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999) : null;
 
   // --- SALES aggregation ---
-  if (salesVals && salesVals.length > 1 && sDateIdx !== -1 && sSkuIdx !== -1) {
-    for (let i = 1; i < salesVals.length; i++) {
-      const row = salesVals[i];
-      const d = parseFlipkartDate(row[sDateIdx]);
-      if (!d) continue;
-      if (startDate && d < startDate) continue;
-      if (endInclusive && d > endInclusive) continue;
+if (salesVals && salesVals.length > 1 && sDateIdx !== -1 && sSkuIdx !== -1) {
+  for (let i = 1; i < salesVals.length; i++) {
+    const row = salesVals[i];
+    const d = parseFlipkartDate(row[sDateIdx]);
+    if (!d) continue;
+    if (startDate && d < startDate) continue;
+    if (endInclusive && d > endInclusive) continue;
 
-      const sku = (row[sSkuIdx] || "").trim();
-      if (!sku) continue;
+    const sku = (row[sSkuIdx] || "").trim();
+    if (!sku) continue;
 
-      const key = `${sku}_${d.toDateString()}`;
-      if (!byKey.has(key)) byKey.set(key, { date: d, sku, qty: 0, gross: 0, rto: 0, refund: 0 });
-      const rec = byKey.get(key);
-      rec.qty += toNum(row[sQtyIdx]);
-      rec.gross += toNum(row[sAmtIdx]);
-    }
+    // group by SKU only (combine across dates)
+    const key = sku;
+    if (!byKey.has(key)) byKey.set(key, { sku, qty: 0, gross: 0, rto: 0, refund: 0 });
+    const rec = byKey.get(key);
+    rec.qty += toNum(row[sQtyIdx]);
+    rec.gross += toNum(row[sAmtIdx]);
   }
+}
 
-  // --- RTO aggregation ---
-  if (rtoVals && rtoVals.length > 1 && rDateIdx !== -1 && rSkuIdx !== -1) {
-    for (let i = 1; i < rtoVals.length; i++) {
-      const row = rtoVals[i];
-      const d = parseFlipkartDate(row[rDateIdx]);
-      if (!d) continue;
-      if (startDate && d < startDate) continue;
-      if (endInclusive && d > endInclusive) continue;
+// --- RTO aggregation ---
+if (rtoVals && rtoVals.length > 1 && rDateIdx !== -1 && rSkuIdx !== -1) {
+  for (let i = 1; i < rtoVals.length; i++) {
+    const row = rtoVals[i];
+    const d = parseFlipkartDate(row[rDateIdx]);
+    if (!d) continue;
+    if (startDate && d < startDate) continue;
+    if (endInclusive && d > endInclusive) continue;
 
-      const sku = (row[rSkuIdx] || "").trim();
-      if (!sku) continue;
+    const sku = (row[rSkuIdx] || "").trim();
+    if (!sku) continue;
 
-      const key = `${sku}_${d.toDateString()}`;
-      if (!byKey.has(key)) byKey.set(key, { date: d, sku, qty: 0, gross: 0, rto: 0, refund: 0 });
-      const rec = byKey.get(key);
-      rec.rto += toNum(row[rQtyIdx]);
-      rec.refund += toNum(row[rAmtIdx]);
-    }
+    // group by SKU only (combine across dates)
+    const key = sku;
+    if (!byKey.has(key)) byKey.set(key, { sku, qty: 0, gross: 0, rto: 0, refund: 0 });
+    const rec = byKey.get(key);
+    rec.rto += toNum(row[rQtyIdx]);
+    rec.refund += toNum(row[rAmtIdx]);
   }
+}
 
   // --- Merge Days to Stockout ---
   const rows = [];
@@ -974,6 +976,7 @@ endDate.setHours(23, 59, 59, 999); // include the entire end day
 
 </body>
 </html>
+
 
 
 
