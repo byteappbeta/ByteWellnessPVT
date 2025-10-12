@@ -927,9 +927,11 @@ async function loadFlipkartSales() {
     const endVal = document.getElementById("fkEnd").value;
     if (!startVal || !endVal) return alert("Please select a date range.");
     const startDate = new Date(startVal);
-    const endDate = new Date(endVal);
-    // endDate used only to compute inclusive end inside combineFlipkartData; we also keep this for clarity
-    endDate.setHours(0, 0, 0, 0);
+startDate.setHours(0, 0, 0, 0); // start from beginning of the selected day
+
+const endDate = new Date(endVal);
+endDate.setHours(23, 59, 59, 999); // include the entire end day
+
 
     const [salesVals, rtoVals, stockMap] = await Promise.all([
       fetchFlipkartTab(FK_SALES_TAB),
@@ -968,6 +970,7 @@ async function loadFlipkartSales() {
 
 </body>
 </html>
+
 
 
 
