@@ -127,7 +127,7 @@
 </div>
 
   <!-- STEP Premium Target badge -->
-<div id="amzStepWrap" style="display:flex; align-items:center; justify-content:center; margin:6px 0 14px;">
+<div id="amzStepWrap" style="display:flex; flex-direction:column; align-items:center; justify-content:center; margin:10px 0 16px; gap:6px;">
   <span id="amzStepBadge" style="padding:8px 12px; border-radius:999px; font-weight:700; text-transform:uppercase;"></span>
 </div>
 
@@ -719,7 +719,7 @@ function renderStepAndPromo(totals, startDate, endDate, promoSummary){
     font-weight:700;
     text-transform:uppercase;
     display:inline-block;
-    margin-top:6px;">
+    text-align:center;">
     BUY 2 GET 15% OFF — Rs.${moneyInt(promoSummary.discount || 0)} (${promoSummary.qty || 0} units)
   </span>
 `;
@@ -1083,6 +1083,7 @@ endDate.setHours(23, 59, 59, 999); // include the entire end day
 
 </body>
 </html>
+
 
 
 
