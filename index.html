@@ -418,105 +418,169 @@ document.addEventListener("DOMContentLoaded", ()=>{
 const SECTIONS=["home","inventory","warehouse","sales","salesOverview","salesShare","blinkit","amazonSales","flipkartSales"];
 function showSection(id){ SECTIONS.forEach(s=>document.getElementById(s).classList.add("hidden")); document.getElementById(id).classList.remove("hidden"); }
 </script>
- 
-  <script>
 
-    /* ====== AMAZON (Website Aggregation with Orders + sheet1) ====== */
+  <script>
+/* ====== AMAZON (Orders + sheet1 combined) ====== */
 
 const AMAZON_SHEET_ID = "1e4Vdkw2Ms0dCxskAKbUfLk3ttqeFT_nbQDhsPtKWWhA"; // Sales sheet
-const AMAZON_RANGE = "sheet1"; // tab name for sheet1 (sales/refunds)
-const AMAZON_ORDERS_TAB = "Orders"; // Orders tab name
+const AMAZON_RANGE = "sheet1"; // sales/refunds tab
+const AMAZON_ORDERS_TAB = "Orders"; // orders tab name
 
-// --- date helpers (reuse parseSheetDate and fmtYMD already defined above)
-function parseAmazonOrderDate(val){
-  // Orders 'purchase-date' is expected in dd-mm-yyyy or yyyy-mm-dd etc.
-  return parseSheetDate(val); // parseSheetDate already handles multiple formats
+// --- date helpers (kept compact & robust)
+function fmtYMD(d){
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+function parseSheetDate(val){
+  if(!val) return null;
+  const s = String(val).trim();
+  // yyyy-mm-dd or yyyy-mm-dd hh:mm:ss
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)){
+    const [yyyy,mm,dd] = s.substring(0,10).split("-");
+    return new Date(Number(yyyy), Number(mm)-1, Number(dd));
+  }
+  // dd-mm-yyyy
+  if(/^\d{2}-\d{2}-\d{4}$/.test(s)){
+    const [dd,mm,yyyy] = s.split("-");
+    return new Date(Number(yyyy), Number(mm)-1, Number(dd));
+  }
+  // dd/mm/yyyy
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(s)){
+    const [dd,mm,yyyy] = s.split("/");
+    return new Date(Number(yyyy), Number(mm)-1, Number(dd));
+  }
+  // fallback
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
 }
 
-// --- fetch Amazon sheet1 (already present fetchAmazonValues) kept
-// --- fetch Orders tab
+// local safe number parsers
+function toIntSafe(n){ const x = Number(n); return isNaN(x)?0:Math.round(x); }
+function toFloatSafe(n){ if(n===null||n===undefined) return 0; const s = String(n).replace(/,/g,"").trim(); const x = parseFloat(s); return isNaN(x)?0:x; }
+function moneyInt(n){ return toIntSafe(n).toString(); }
+
+// set default dates (yesterday) for Amazon inputs
+function setAmazonDefaultDates(){
+  const end = new Date(); end.setDate(end.getDate() - 1);
+  const start = new Date(end);
+  const sd = document.getElementById("amzStart");
+  const ed = document.getElementById("amzEnd");
+  if(sd) sd.value = fmtYMD(start);
+  if(ed) ed.value = fmtYMD(end);
+}
+
+// fetch sheet1 (sales/refunds)
+async function fetchAmazonValues(){
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${AMAZON_SHEET_ID}/values/${encodeURIComponent(AMAZON_RANGE)}?key=${API_KEY}`;
+  const res = await fetch(url);
+  const json = await res.json();
+  return json.values || [];
+}
+
+// fetch Orders tab (use explicit range to be safe)
 async function fetchAmazonOrdersValues(){
-  const range = encodeURIComponent(AMAZON_ORDERS_TAB);
+  const range = `${encodeURIComponent(AMAZON_ORDERS_TAB)}!A1:Z`;
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${AMAZON_SHEET_ID}/values/${range}?key=${API_KEY}`;
   const res = await fetch(url);
   const json = await res.json();
   return json.values || [];
 }
 
-// --- Utility parsers
-function parseNumberSafe(x){
-  if(x === null || x === undefined) return 0;
-  const s = String(x).replace(/,/g, "").trim();
-  if(s === "") return 0;
-  const n = Number(s);
-  return isNaN(n) ? 0 : n;
+// fetch days-to-stockout map from Warehouse Amazon tab (unchanged logic)
+async function fetchAmazonStockData(){
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${WAREHOUSE_SHEET_ID}/values/Amazon?key=${API_KEY}`;
+  const res = await fetch(url);
+  const json = await res.json();
+  const values = json.values || [];
+  if (values.length === 0) return new Map();
+
+  const headers = values[0].map(h => (h || "").toString().trim().toLowerCase());
+  const skuIndex = headers.indexOf("sku");
+  const daysIndex = headers.indexOf("days to stockout");
+  if (skuIndex === -1 || daysIndex === -1) return new Map();
+
+  const stockMap = new Map();
+  for (let i = 1; i < values.length; i++){
+    const row = values[i];
+    const sku = (row[skuIndex]||"").toString().trim();
+    const days = (row[daysIndex]||"").toString().trim();
+    if(sku) stockMap.set(sku, days);
+  }
+  return stockMap;
 }
 
-// --- Aggregate Orders & Refunds into combined per-SKU map
-function aggregateCombined(ordersVals, salesVals, startDate, endDate){
-  // ordersVals: [headers, ...rows] from Orders tab
-  // salesVals: sheet1 results: [headers, ...rows]
-  const skuMap = new Map(); // sku -> { sku, qty, gross, rto, refunds }
+/*
+  Aggregation rules implemented exactly:
+  - Qty  = sum(quantity) from Orders tab per SKU (date filter on purchase-date)
+  - Gross = sum(item-price) from Orders tab per SKU (sum of prices, not qty*price)
+  - RTO & Refunds = from sheet1 where Type == 'refund' (date filter on Date)
+  - Discount (Buy2) = sum(item-promotion-discount) from Orders rows matching promotion-id substring
+*/
+function aggregateOrdersAndSheet1(ordersVals, sheetVals, orderStart, orderEnd, sheetStart, sheetEnd){
+  // ordersVals and sheetVals are arrays from Google Sheets API (headers+rows)
+  const skuMap = new Map();
 
-  // --- Process Orders tab
+  // --- Process Orders tab (purchase-date)
   if((ordersVals || []).length >= 1){
     const headers = ordersVals[0].map(h => (h||"").toString().trim().toLowerCase());
     const idxDate = headers.indexOf("purchase-date");
-    const idxSku  = headers.indexOf("sku");
-    const idxQty  = headers.indexOf("quantity");
+    const idxSku = headers.indexOf("sku");
+    const idxQty = headers.indexOf("quantity");
     const idxPrice = headers.indexOf("item-price");
     const idxPromoDisc = headers.indexOf("item-promotion-discount");
     const idxPromoId = headers.indexOf("promotion-ids");
 
     for(let i=1;i<ordersVals.length;i++){
       const row = ordersVals[i];
-      const d = idxDate!==-1 ? parseAmazonOrderDate(row[idxDate]) : null;
+      const d = (idxDate!==-1) ? parseSheetDate(row[idxDate]) : null;
       if(!d) continue;
       // inclusive filter
-      if(startDate && d < startDate) continue;
-      if(endDate){
-        const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23,59,59,999);
+      if(orderStart && d < orderStart) continue;
+      if(orderEnd){
+        const endDay = new Date(orderEnd.getFullYear(), orderEnd.getMonth(), orderEnd.getDate(), 23,59,59,999);
         if(d > endDay) continue;
       }
 
       const sku = (idxSku!==-1 ? (row[idxSku]||"") : "").toString().trim();
       if(!sku) continue;
 
-      const qty = parseNumberSafe(idxQty!==-1 ? row[idxQty] : 0);
-      const price = parseNumberSafe(idxPrice!==-1 ? row[idxPrice] : 0);
-      const promoDisc = parseNumberSafe(idxPromoDisc!==-1 ? row[idxPromoDisc] : 0);
+      const qty = toIntSafe(idxQty!==-1 ? row[idxQty] : 0);
+      const price = toFloatSafe(idxPrice!==-1 ? row[idxPrice] : 0);
+      const promoDisc = toFloatSafe(idxPromoDisc!==-1 ? row[idxPromoDisc] : 0);
       const promoId = idxPromoId!==-1 ? (row[idxPromoId]||"").toString() : "";
 
       if(!skuMap.has(sku)){
-        skuMap.set(sku, { sku, qty:0, gross:0, rto:0, refunds:0, promoQty:0, promoDiscSum:0 });
+        skuMap.set(sku, { sku, qty:0, gross:0, rto:0, refunds:0, promoQty:0, promoDiscountSum:0 });
       }
       const rec = skuMap.get(sku);
       rec.qty += qty;
-      rec.gross += price;           // per your instruction: Gross = sum of item-price (not multiplied)
-      // track promo specific Buy2 (by exact substring)
+      rec.gross += price; // as requested: gross is sum of item-price
+      // track Buy2 promo rows (exact substring match)
       if(typeof promoId === "string" && promoId.indexOf("Percentage Off 2025/08/27 7-27-42-779") !== -1){
         rec.promoQty += qty;
-        rec.promoDiscSum += promoDisc;
+        rec.promoDiscountSum += promoDisc;
       }
     }
   }
 
-  // --- Process sheet1 for Refunds/RTO (type === 'refund'), Date column used for filtering
-  if((salesVals || []).length >= 1){
-    const headers = salesVals[0].map(h => (h||"").toString().trim().toLowerCase());
+  // --- Process sheet1 for refunds (Date, Type = refund)
+  if((sheetVals || []).length >= 1){
+    const headers = sheetVals[0].map(h => (h||"").toString().trim().toLowerCase());
     const idxDate = headers.indexOf("date");
     const idxType = headers.indexOf("type");
-    const idxSku  = headers.indexOf("sku");
-    const idxQty  = headers.indexOf("qty");
+    const idxSku = headers.indexOf("sku");
+    const idxQty = headers.indexOf("qty");
     const idxSales = headers.indexOf("sales(-gst)");
 
-    for(let i=1;i<salesVals.length;i++){
-      const row = salesVals[i];
-      const d = idxDate!==-1 ? parseSheetDate(row[idxDate]) : null;
+    for(let i=1;i<sheetVals.length;i++){
+      const row = sheetVals[i];
+      const d = (idxDate!==-1) ? parseSheetDate(row[idxDate]) : null;
       if(!d) continue;
-      if(startDate && d < startDate) continue;
-      if(endDate){
-        const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23,59,59,999);
+      // inclusive filter on sheet1 Date
+      if(sheetStart && d < sheetStart) continue;
+      if(sheetEnd){
+        const endDay = new Date(sheetEnd.getFullYear(), sheetEnd.getMonth(), sheetEnd.getDate(), 23,59,59,999);
         if(d > endDay) continue;
       }
 
@@ -524,14 +588,13 @@ function aggregateCombined(ordersVals, salesVals, startDate, endDate){
       if(type !== "refund") continue;
 
       const sku = idxSku!==-1 ? (row[idxSku]||"").toString().trim() : "";
-      // If SKU blank, skip
       if(!sku) continue;
 
-      const qty = parseNumberSafe(idxQty!==-1 ? row[idxQty] : 0);
-      const salesVal = parseNumberSafe(idxSales!==-1 ? row[idxSales] : 0);
+      const qty = toIntSafe(idxQty!==-1 ? row[idxQty] : 0);
+      const salesVal = toFloatSafe(idxSales!==-1 ? row[idxSales] : 0);
 
       if(!skuMap.has(sku)){
-        skuMap.set(sku, { sku, qty:0, gross:0, rto:0, refunds:0, promoQty:0, promoDiscSum:0 });
+        skuMap.set(sku, { sku, qty:0, gross:0, rto:0, refunds:0, promoQty:0, promoDiscountSum:0 });
       }
       const rec = skuMap.get(sku);
       rec.rto += qty;
@@ -539,15 +602,15 @@ function aggregateCombined(ordersVals, salesVals, startDate, endDate){
     }
   }
 
-  // Convert map -> array
+  // Convert to array
   const rows = Array.from(skuMap.values());
-  // Sort by gross descending (for example)
+  // Sort by gross desc
   rows.sort((a,b) => b.gross - a.gross);
   return rows;
 }
 
-// --- Evaluate STEP with new rules
-function evaluateStepTargetNew(totals, startDate, endDate){
+// --- Evaluate STEP Premium with new rules
+function evaluateStepNew(totals, startDate, endDate){
   const targetSalesPerDay = 57836;
   const targetQtyPerDay = 109;
 
@@ -566,8 +629,8 @@ function evaluateStepTargetNew(totals, startDate, endDate){
   return { fulfilled, days, netSales, netQty, salesTarget, qtyTarget };
 }
 
-// --- Render aggregated table (SKU | Qty | Gross | RTO | Refunds | Days to Stockout)
-function renderAmazonCombinedTable(rows, stockMap){
+// --- Render combined Amazon table (SKU | Qty | Gross | RTO | Refunds | Days to Stockout)
+function renderAmazonCombined(rows, stockMap){
   const tbl = document.getElementById("amazonTable");
   const thead = tbl.querySelector("thead");
   const tbody = tbl.querySelector("tbody");
@@ -590,6 +653,7 @@ function renderAmazonCombinedTable(rows, stockMap){
   rows.forEach(r=>{
     const days = stockMap.get(r.sku) || "—";
     const color = (typeof days === "string") ? "#333" : (parseFloat(days) < 20 ? "#FF4D4F" : "#333");
+
     bodyHTML += `
       <tr>
         <td>${r.sku}</td>
@@ -619,12 +683,23 @@ function renderAmazonCombinedTable(rows, stockMap){
     </tr>
   `;
 
-  return { totals: { qty: totalQty, gross: totalGross, rto: totalRto, refunds: totalRefunds } };
+  return { qty: totalQty, gross: totalGross, rto: totalRto, refunds: totalRefunds };
 }
 
-// --- Renders STEP badge and promo line
+// --- Render STEP badge and promo line (clean UI)
 function renderStepAndPromo(totals, startDate, endDate, promoSummary){
-  // Promo line element (create if not exists)
+  const badge = document.getElementById("amzStepBadge");
+  const evalRes = evaluateStepNew({ qty: totals.qty, gross: totals.gross, rto: totals.rto, refunds: totals.refunds, discount: promoSummary.discount }, startDate, endDate);
+  if(evalRes.fulfilled){
+    badge.textContent = evalRes.days === 1 ? "STEP Premium Target – Fulfilled (For applied date)" : "STEP Premium Target – Fulfilled (For applied date range)";
+    badge.style.background = "#0f915a";
+  } else {
+    badge.textContent = evalRes.days === 1 ? "STEP Premium Target – Unfulfilled (For applied date)" : "STEP Premium Target – Unfulfilled (For applied date range)";
+    badge.style.background = "#ff4d4f";
+  }
+  badge.style.color = "white";
+
+  // promo line
   let promoLine = document.getElementById("amzPromoLine");
   if(!promoLine){
     promoLine = document.createElement("div");
@@ -635,59 +710,62 @@ function renderStepAndPromo(totals, startDate, endDate, promoSummary){
     const wrap = document.getElementById("amzStepWrap");
     if(wrap) wrap.appendChild(promoLine);
   }
-
-  const evalRes = evaluateStepTargetNew({ qty: totals.qty, gross: totals.gross, rto: totals.rto, refunds: totals.refunds, discount: promoSummary.discount }, startDate, endDate);
-  // render badge (reuse existing renderStepBadge idea)
-  const badge = document.getElementById("amzStepBadge");
-  if(evalRes.fulfilled){
-    badge.textContent = evalRes.days === 1 ? "STEP Premium Target – Fulfilled (For applied date)" : "STEP Premium Target – Fulfilled (For applied date range)";
-    badge.style.background = "#0f915a";
-  } else {
-    badge.textContent = evalRes.days === 1 ? "STEP Premium Target – Unfulfilled (For applied date)" : "STEP Premium Target – Unfulfilled (For applied date range)";
-    badge.style.background = "#ff4d4f";
-  }
-  badge.style.color = "white";
-
-  // Promo line text
-  const discountDisplay = moneyInt(promoSummary.discount || 0);
-  promoLine.innerText = `Buy 2 Get 15% OFF — Rs.${discountDisplay} (${promoSummary.qty || 0} units)`;
+  promoLine.innerText = `Buy 2 Get 15% OFF — Rs.${moneyInt(promoSummary.discount || 0)} (${promoSummary.qty || 0} units)`;
 
   return evalRes;
 }
 
-// --- Export function (existing exportAmazonCSV works on #amazonTable so no change needed)
+// --- Export CSV for Amazon table (same format as displayed)
+function exportAmazonCSV(){
+  const table = document.getElementById("amazonTable");
+  let csv = "";
+  table.querySelectorAll("tr").forEach(tr=>{
+    const cols = tr.querySelectorAll("th,td");
+    const line = Array.from(cols).map(td => `"${td.innerText.replace(/"/g,'""')}"`).join(",");
+    csv += line + "\n";
+  });
+  const blob = new Blob([csv], {type:"text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "amazon_sales.csv"; a.click();
+  URL.revokeObjectURL(url);
+}
 
-// --- Main loader (replaces old loadAmazonSales)
+// --- Main loader: fetch Orders + sheet1 + stock, aggregate, render
 async function loadAmazonSales(){
   try{
     const startVal = document.getElementById("amzStart").value;
     const endVal   = document.getElementById("amzEnd").value;
-    const startDate = new Date(new Date(startVal).setHours(0,0,0,0));
-    const endDate   = new Date(new Date(endVal).setHours(23,59,59,999));
     if(!startVal || !endVal){ alert("Please select a date range."); return; }
 
-    // Fetch Orders (Orders tab), sheet1 and stock map in parallel
-    const [ordersVals, amazonValues, stockMap] = await Promise.all([
+    const orderStart = new Date(new Date(startVal).setHours(0,0,0,0));
+    const orderEnd   = new Date(new Date(endVal).setHours(23,59,59,999));
+    // sheet1 uses Date column - use same date inputs but keep separate variables in case formats differ
+    const sheetStart = orderStart;
+    const sheetEnd = orderEnd;
+
+    // fetch in parallel
+    const [ordersVals, sheetVals, stockMap] = await Promise.all([
       fetchAmazonOrdersValues(),
       fetchAmazonValues(),
       fetchAmazonStockData()
     ]);
 
-    // Aggregate combined per SKU using Orders for Qty/Gross and sheet1 for refunds/rto
-    const rows = aggregateCombined(ordersVals, amazonValues, startDate, endDate);
+    // aggregate
+    const rows = aggregateOrdersAndSheet1(ordersVals, sheetVals, orderStart, orderEnd, sheetStart, sheetEnd);
 
-    // Compute promo summary (Buy2) by summing promoQty and promoDiscSum across rows
-    let promoSummary = { qty: 0, discount: 0 };
+    // promo summary (Buy2)
+    let promoSummary = { qty:0, discount:0 };
     rows.forEach(r=>{
       promoSummary.qty += (r.promoQty || 0);
-      promoSummary.discount += (r.promoDiscSum || 0);
+      promoSummary.discount += (r.promoDiscountSum || 0);
     });
 
-    // Render table and totals
-    const out = renderAmazonCombinedTable(rows, stockMap);
+    // render table
+    const totals = renderAmazonCombined(rows, stockMap);
 
-    // Compute and show STEP badge + promo line
-    const evalRes = renderStepAndPromo(out.totals, startDate, endDate, promoSummary);
+    // render STEP badge + promo line
+    renderStepAndPromo(totals, orderStart, orderEnd, promoSummary);
 
   }catch(err){
     console.error(err);
@@ -695,7 +773,7 @@ async function loadAmazonSales(){
   }
 }
 
-// --- initialize UI (wire up apply + export buttons)
+// --- initialize UI: set defaults, wire buttons, auto-load yesterday
 (function initAmazonUI(){
   const applyBtn = document.getElementById("amzApply");
   const exportBtn = document.getElementById("amzExport");
@@ -705,15 +783,7 @@ async function loadAmazonSales(){
   applyBtn.addEventListener("click", loadAmazonSales);
   exportBtn.addEventListener("click", exportAmazonCSV);
 
-  function setAmazonDefaultDates(){
-  const end = new Date(); 
-  end.setDate(end.getDate() - 1);
-  const start = new Date(end);
-  document.getElementById("amzStart").value = fmtYMD(start);
-  document.getElementById("amzEnd").value   = fmtYMD(end);
-}
-
-  
+  // auto-load yesterday on initial page entry
   loadAmazonSales();
 })();
 
@@ -999,9 +1069,6 @@ endDate.setHours(23, 59, 59, 999); // include the entire end day
 
 </body>
 </html>
-
-
-
 
 
 
