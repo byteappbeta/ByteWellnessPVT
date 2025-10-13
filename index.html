@@ -705,6 +705,15 @@ async function loadAmazonSales(){
   applyBtn.addEventListener("click", loadAmazonSales);
   exportBtn.addEventListener("click", exportAmazonCSV);
 
+  function setAmazonDefaultDates(){
+  const end = new Date(); 
+  end.setDate(end.getDate() - 1);
+  const start = new Date(end);
+  document.getElementById("amzStart").value = fmtYMD(start);
+  document.getElementById("amzEnd").value   = fmtYMD(end);
+}
+
+  
   loadAmazonSales();
 })();
 
@@ -990,6 +999,7 @@ endDate.setHours(23, 59, 59, 999); // include the entire end day
 
 </body>
 </html>
+
 
 
 
