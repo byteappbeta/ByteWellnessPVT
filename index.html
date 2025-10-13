@@ -418,158 +418,156 @@ document.addEventListener("DOMContentLoaded", ()=>{
 const SECTIONS=["home","inventory","warehouse","sales","salesOverview","salesShare","blinkit","amazonSales","flipkartSales"];
 function showSection(id){ SECTIONS.forEach(s=>document.getElementById(s).classList.add("hidden")); document.getElementById(id).classList.remove("hidden"); }
 </script>
+ 
   <script>
-/* ====== AMAZON (Website Aggregation with Days to Stockout) ====== */
+
+    /* ====== AMAZON (Website Aggregation with Orders + sheet1) ====== */
 
 const AMAZON_SHEET_ID = "1e4Vdkw2Ms0dCxskAKbUfLk3ttqeFT_nbQDhsPtKWWhA"; // Sales sheet
-const AMAZON_RANGE = "sheet1"; // tab name in your Amazon sales sheet
+const AMAZON_RANGE = "sheet1"; // tab name for sheet1 (sales/refunds)
+const AMAZON_ORDERS_TAB = "Orders"; // Orders tab name
 
-// --- date helpers
-function fmtYMD(d){ const m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0"); return `${d.getFullYear()}-${m}-${day}`;}
-function parseSheetDate(val){
-  if(!val) return null;
-  const s=String(val).trim();
-  if(/^\d{2}-\d{2}-\d{4}$/.test(s)){ const [dd,mm,yyyy]=s.split("-"); return new Date(+yyyy,+mm-1,+dd); }
-  if(/^\d{4}-\d{2}-\d{2}$/.test(s)){ const [y,m,d]=s.split("-"); return new Date(+y,+m-1,+d); }
-  const d=new Date(s); return isNaN(d.getTime())?null:d;
-}
-function setAmazonDefaultDates(){
-  const end=new Date(); end.setDate(end.getDate()-1);
-  const start=new Date(end);
-  document.getElementById("amzStart").value = fmtYMD(start);
-  document.getElementById("amzEnd").value   = fmtYMD(end);
+// --- date helpers (reuse parseSheetDate and fmtYMD already defined above)
+function parseAmazonOrderDate(val){
+  // Orders 'purchase-date' is expected in dd-mm-yyyy or yyyy-mm-dd etc.
+  return parseSheetDate(val); // parseSheetDate already handles multiple formats
 }
 
-// number helpers
-function toInt(n){ const x = Number(n); return isNaN(x)?0:Math.round(x); }
-function moneyInt(n){ return toInt(n).toString(); }
-
-// --- fetch Amazon sales
-async function fetchAmazonValues(){
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${AMAZON_SHEET_ID}/values/${encodeURIComponent(AMAZON_RANGE)}?key=${API_KEY}`;
+// --- fetch Amazon sheet1 (already present fetchAmazonValues) kept
+// --- fetch Orders tab
+async function fetchAmazonOrdersValues(){
+  const range = encodeURIComponent(AMAZON_ORDERS_TAB);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${AMAZON_SHEET_ID}/values/${range}?key=${API_KEY}`;
   const res = await fetch(url);
   const json = await res.json();
-  if(!json.values) throw new Error("No values from Amazon sheet");
-  return json.values;
+  return json.values || [];
 }
 
-/* ====== NEW: Fetch Days to Stockout from Warehouse Sheet ====== */
-async function fetchAmazonStockData(){
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${WAREHOUSE_SHEET_ID}/values/Amazon?key=${API_KEY}`;
-  const res = await fetch(url);
-  const json = await res.json();
-  const values = json.values || [];
-  if (values.length === 0) return new Map();
-
-  const headers = values[0].map(h => (h || "").trim().toLowerCase());
-  const skuIndex = headers.indexOf("sku");
-  const daysIndex = headers.indexOf("days to stockout");
-
-  if (skuIndex === -1 || daysIndex === -1) {
-    console.warn("⚠️ 'SKU' or 'Days to Stockout' column not found in Warehouse Amazon tab.");
-    return new Map();
-  }
-
-  const stockMap = new Map();
-  for (let i = 1; i < values.length; i++) {
-    const row = values[i];
-    const sku = (row[skuIndex] || "").trim();
-    const days = (row[daysIndex] || "").trim();
-    if (sku) stockMap.set(sku, days);
-  }
-  return stockMap;
+// --- Utility parsers
+function parseNumberSafe(x){
+  if(x === null || x === undefined) return 0;
+  const s = String(x).replace(/,/g, "").trim();
+  if(s === "") return 0;
+  const n = Number(s);
+  return isNaN(n) ? 0 : n;
 }
 
-/* ====== NEW: Merge Days to Stockout ====== */
-function mergeDaysToStockout(agg, stockMap){
-  agg.rows.forEach(row => {
-    const sku = row.sku.trim();
-    row.daysToStockout = stockMap.get(sku) || "—";
-  });
-  return agg;
-}
+// --- Aggregate Orders & Refunds into combined per-SKU map
+function aggregateCombined(ordersVals, salesVals, startDate, endDate){
+  // ordersVals: [headers, ...rows] from Orders tab
+  // salesVals: sheet1 results: [headers, ...rows]
+  const skuMap = new Map(); // sku -> { sku, qty, gross, rto, refunds }
 
-// --- aggregation logic
-function aggregateAmazon(values, startDate, endDate){
-  if(values.length<2) return { rows:[], totals:{qty:0,salesPos:0,rtoQty:0,refundsAbs:0} };
+  // --- Process Orders tab
+  if((ordersVals || []).length >= 1){
+    const headers = ordersVals[0].map(h => (h||"").toString().trim().toLowerCase());
+    const idxDate = headers.indexOf("purchase-date");
+    const idxSku  = headers.indexOf("sku");
+    const idxQty  = headers.indexOf("quantity");
+    const idxPrice = headers.indexOf("item-price");
+    const idxPromoDisc = headers.indexOf("item-promotion-discount");
+    const idxPromoId = headers.indexOf("promotion-ids");
 
-  const headers = values[0].map(h=>String(h).trim().toLowerCase());
-  const rows    = values.slice(1);
+    for(let i=1;i<ordersVals.length;i++){
+      const row = ordersVals[i];
+      const d = idxDate!==-1 ? parseAmazonOrderDate(row[idxDate]) : null;
+      if(!d) continue;
+      // inclusive filter
+      if(startDate && d < startDate) continue;
+      if(endDate){
+        const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23,59,59,999);
+        if(d > endDay) continue;
+      }
 
-  const idxDate   = headers.indexOf("date");
-  const idxType   = headers.indexOf("type");
-  const idxSku    = headers.indexOf("sku");
-  const idxQty    = headers.indexOf("qty");
-  const idxSales  = headers.indexOf("sales(-gst)");
+      const sku = (idxSku!==-1 ? (row[idxSku]||"") : "").toString().trim();
+      if(!sku) continue;
 
-  if(idxDate===-1 || idxType===-1 || idxSku===-1 || idxQty===-1 || idxSales===-1){
-    throw new Error("Amazon sheet missing one of required headers");
-  }
+      const qty = parseNumberSafe(idxQty!==-1 ? row[idxQty] : 0);
+      const price = parseNumberSafe(idxPrice!==-1 ? row[idxPrice] : 0);
+      const promoDisc = parseNumberSafe(idxPromoDisc!==-1 ? row[idxPromoDisc] : 0);
+      const promoId = idxPromoId!==-1 ? (row[idxPromoId]||"").toString() : "";
 
-  const endInclusive = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23,59,59,999);
-  const bySku = new Map();
-
-  rows.forEach(r=>{
-    const d = parseSheetDate(r[idxDate]); if(!d) return;
-    if(d < startDate || d > endInclusive) return;
-
-    const type  = (r[idxType] || "").toString().trim().toLowerCase();
-    const sku   = (r[idxSku]  || "").toString().trim();
-    const qty   = toInt(r[idxQty]);
-    const sales = Number((r[idxSales] || "0").toString().replace(/,/g,""));
-
-    if(!sku) return;
-
-    if(!bySku.has(sku)){
-      bySku.set(sku, { sku, qtyOrder:0, salesPos:0, rtoQty:0, refundsAbs:0 });
+      if(!skuMap.has(sku)){
+        skuMap.set(sku, { sku, qty:0, gross:0, rto:0, refunds:0, promoQty:0, promoDiscSum:0 });
+      }
+      const rec = skuMap.get(sku);
+      rec.qty += qty;
+      rec.gross += price;           // per your instruction: Gross = sum of item-price (not multiplied)
+      // track promo specific Buy2 (by exact substring)
+      if(typeof promoId === "string" && promoId.indexOf("Percentage Off 2025/08/27 7-27-42-779") !== -1){
+        rec.promoQty += qty;
+        rec.promoDiscSum += promoDisc;
+      }
     }
-    const rec = bySku.get(sku);
-
-    if(type === "order"){
-      rec.qtyOrder += qty;
-      if(sales > 0) rec.salesPos += sales;
-    } else if(type === "refund"){
-      rec.rtoQty += Math.abs(qty);
-      if(sales < 0) rec.refundsAbs += Math.abs(sales);
-    }
-  });
-
-  const out = [];
-  let tQty=0, tSales=0, tRto=0, tRefunds=0;
-
-  for(const rec of bySku.values()){
-    out.push({ sku: rec.sku, qty: rec.qtyOrder, sales: rec.salesPos, rto: rec.rtoQty, refunds: rec.refundsAbs });
-    tQty     += rec.qtyOrder;
-    tSales   += rec.salesPos;
-    tRto     += rec.rtoQty;
-    tRefunds += rec.refundsAbs;
   }
 
-  out.sort((a,b)=> b.sales - a.sales);
+  // --- Process sheet1 for Refunds/RTO (type === 'refund'), Date column used for filtering
+  if((salesVals || []).length >= 1){
+    const headers = salesVals[0].map(h => (h||"").toString().trim().toLowerCase());
+    const idxDate = headers.indexOf("date");
+    const idxType = headers.indexOf("type");
+    const idxSku  = headers.indexOf("sku");
+    const idxQty  = headers.indexOf("qty");
+    const idxSales = headers.indexOf("sales(-gst)");
 
-  return { rows: out, totals:{qty:tQty, salesPos:tSales, rtoQty:tRto, refundsAbs:tRefunds} };
+    for(let i=1;i<salesVals.length;i++){
+      const row = salesVals[i];
+      const d = idxDate!==-1 ? parseSheetDate(row[idxDate]) : null;
+      if(!d) continue;
+      if(startDate && d < startDate) continue;
+      if(endDate){
+        const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23,59,59,999);
+        if(d > endDay) continue;
+      }
+
+      const type = idxType!==-1 ? (row[idxType]||"").toString().trim().toLowerCase() : "";
+      if(type !== "refund") continue;
+
+      const sku = idxSku!==-1 ? (row[idxSku]||"").toString().trim() : "";
+      // If SKU blank, skip
+      if(!sku) continue;
+
+      const qty = parseNumberSafe(idxQty!==-1 ? row[idxQty] : 0);
+      const salesVal = parseNumberSafe(idxSales!==-1 ? row[idxSales] : 0);
+
+      if(!skuMap.has(sku)){
+        skuMap.set(sku, { sku, qty:0, gross:0, rto:0, refunds:0, promoQty:0, promoDiscSum:0 });
+      }
+      const rec = skuMap.get(sku);
+      rec.rto += qty;
+      rec.refunds += Math.abs(salesVal);
+    }
+  }
+
+  // Convert map -> array
+  const rows = Array.from(skuMap.values());
+  // Sort by gross descending (for example)
+  rows.sort((a,b) => b.gross - a.gross);
+  return rows;
 }
 
-// --- STEP Premium badge
-function evaluateStepTarget(totals, startDate, endDate){
-  const targetSalesPerDay = 55000;
-  const targetQtyPerDay   = 111;
+// --- Evaluate STEP with new rules
+function evaluateStepTargetNew(totals, startDate, endDate){
+  const targetSalesPerDay = 57836;
+  const targetQtyPerDay = 109;
 
   const s = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
   const e = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
   const days = Math.floor((e - s)/(1000*60*60*24)) + 1;
 
   const salesTarget = targetSalesPerDay * days;
-  const qtyTarget   = targetQtyPerDay   * days;
-  const netSales = totals.salesPos - totals.refundsAbs;
+  const qtyTarget = targetQtyPerDay * days;
 
-  const fulfilled = (netSales >= salesTarget) || (totals.qty >= qtyTarget);
+  const netSales = totals.gross - totals.refunds - totals.discount;
+  const netQty = totals.qty - totals.rto;
 
-  return { fulfilled, days };
+  const fulfilled = (netSales >= salesTarget) || (netQty >= qtyTarget);
+
+  return { fulfilled, days, netSales, netQty, salesTarget, qtyTarget };
 }
 
-// --- render Amazon table
-function renderAmazonTable(agg){
+// --- Render aggregated table (SKU | Qty | Gross | RTO | Refunds | Days to Stockout)
+function renderAmazonCombinedTable(rows, stockMap){
   const tbl = document.getElementById("amazonTable");
   const thead = tbl.querySelector("thead");
   const tbody = tbl.querySelector("tbody");
@@ -579,7 +577,7 @@ function renderAmazonTable(agg){
     <tr>
       <th>Sku</th>
       <th>Qty</th>
-      <th>Sales(-GST)</th>
+      <th>Gross</th>
       <th>RTO</th>
       <th>Refunds</th>
       <th>Days to Stockout</th>
@@ -587,19 +585,25 @@ function renderAmazonTable(agg){
   `;
 
   let bodyHTML = "";
-  agg.rows.forEach(r=>{
-    const days = parseFloat(r.daysToStockout);
-    const color = !isNaN(days) && days < 20 ? "#FF4D4F" : "#333";
+  let totalQty = 0, totalGross = 0, totalRto = 0, totalRefunds = 0;
+
+  rows.forEach(r=>{
+    const days = stockMap.get(r.sku) || "—";
+    const color = (typeof days === "string") ? "#333" : (parseFloat(days) < 20 ? "#FF4D4F" : "#333");
     bodyHTML += `
       <tr>
         <td>${r.sku}</td>
         <td>${r.qty}</td>
-        <td>${moneyInt(r.sales)}</td>
-        <td>${r.rto}</td>
+        <td>${moneyInt(r.gross)}</td>
+        <td>${r.rto || 0}</td>
         <td>${moneyInt(r.refunds)}</td>
-        <td style="color:${color}; font-weight:600;">${r.daysToStockout}</td>
+        <td style="color:${color}; font-weight:600;">${days}</td>
       </tr>
     `;
+    totalQty += r.qty;
+    totalGross += r.gross;
+    totalRto += r.rto;
+    totalRefunds += r.refunds;
   });
 
   tbody.innerHTML = bodyHTML || `<tr><td colspan="6">No data in this date range.</td></tr>`;
@@ -607,74 +611,83 @@ function renderAmazonTable(agg){
   tfoot.innerHTML = `
     <tr>
       <td><b>TOTAL</b></td>
-      <td><b>${agg.totals.qty}</b></td>
-      <td><b>${moneyInt(agg.totals.salesPos)}</b></td>
-      <td><b>${agg.totals.rtoQty}</b></td>
-      <td><b>${moneyInt(agg.totals.refundsAbs)}</b></td>
+      <td><b>${totalQty}</b></td>
+      <td><b>${moneyInt(totalGross)}</b></td>
+      <td><b>${totalRto}</b></td>
+      <td><b>${moneyInt(totalRefunds)}</b></td>
       <td></td>
     </tr>
   `;
+
+  return { totals: { qty: totalQty, gross: totalGross, rto: totalRto, refunds: totalRefunds } };
 }
 
-// --- STEP badge render
-function renderStepBadge(evalRes, startDate, endDate){
-  const badge = document.getElementById("amzStepBadge");
+// --- Renders STEP badge and promo line
+function renderStepAndPromo(totals, startDate, endDate, promoSummary){
+  // Promo line element (create if not exists)
+  let promoLine = document.getElementById("amzPromoLine");
+  if(!promoLine){
+    promoLine = document.createElement("div");
+    promoLine.id = "amzPromoLine";
+    promoLine.style.fontWeight = "700";
+    promoLine.style.marginTop = "6px";
+    promoLine.style.textAlign = "center";
+    const wrap = document.getElementById("amzStepWrap");
+    if(wrap) wrap.appendChild(promoLine);
+  }
 
+  const evalRes = evaluateStepTargetNew({ qty: totals.qty, gross: totals.gross, rto: totals.rto, refunds: totals.refunds, discount: promoSummary.discount }, startDate, endDate);
+  // render badge (reuse existing renderStepBadge idea)
+  const badge = document.getElementById("amzStepBadge");
   if(evalRes.fulfilled){
-    badge.textContent = evalRes.days === 1
-      ? "STEP Premium Target – Fulfilled (For applied date)"
-      : "STEP Premium Target – Fulfilled (For applied date range)";
-    badge.style.background = "#0f915a"; 
-  }else{
-    badge.textContent = evalRes.days === 1
-      ? "STEP Premium Target – Unfulfilled (For applied date)"
-      : "STEP Premium Target – Unfulfilled (For applied date range)";
-    badge.style.background = "#ff4d4f"; 
+    badge.textContent = evalRes.days === 1 ? "STEP Premium Target – Fulfilled (For applied date)" : "STEP Premium Target – Fulfilled (For applied date range)";
+    badge.style.background = "#0f915a";
+  } else {
+    badge.textContent = evalRes.days === 1 ? "STEP Premium Target – Unfulfilled (For applied date)" : "STEP Premium Target – Unfulfilled (For applied date range)";
+    badge.style.background = "#ff4d4f";
   }
   badge.style.color = "white";
+
+  // Promo line text
+  const discountDisplay = moneyInt(promoSummary.discount || 0);
+  promoLine.innerText = `Buy 2 Get 15% OFF — Rs.${discountDisplay} (${promoSummary.qty || 0} units)`;
+
+  return evalRes;
 }
 
-// --- export CSV
-function exportAmazonCSV(){
-  const table = document.getElementById("amazonTable");
-  let csv = "";
-  table.querySelectorAll("tr").forEach(tr=>{
-    const cols = tr.querySelectorAll("th,td");
-    const line = Array.from(cols).map(td => `"${td.innerText.replace(/"/g,'""')}"`).join(",");
-    csv += line + "\n";
-  });
-  const blob = new Blob([csv], {type:"text/csv"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = "amazon_sales.csv"; a.click();
-  URL.revokeObjectURL(url);
-}
+// --- Export function (existing exportAmazonCSV works on #amazonTable so no change needed)
 
-// --- main loader
+// --- Main loader (replaces old loadAmazonSales)
 async function loadAmazonSales(){
   try{
     const startVal = document.getElementById("amzStart").value;
     const endVal   = document.getElementById("amzEnd").value;
     const startDate = new Date(new Date(startVal).setHours(0,0,0,0));
     const endDate   = new Date(new Date(endVal).setHours(23,59,59,999));
-    if(!startDate || !endDate){ alert("Please select a date range."); return; }
+    if(!startVal || !endVal){ alert("Please select a date range."); return; }
 
-    // Fetch sales + stock data
-    const [amazonValues, stockMap] = await Promise.all([
+    // Fetch Orders (Orders tab), sheet1 and stock map in parallel
+    const [ordersVals, amazonValues, stockMap] = await Promise.all([
+      fetchAmazonOrdersValues(),
       fetchAmazonValues(),
       fetchAmazonStockData()
     ]);
 
-    // Aggregate + merge
-    let agg = aggregateAmazon(amazonValues, startDate, endDate);
-    agg = mergeDaysToStockout(agg, stockMap);
+    // Aggregate combined per SKU using Orders for Qty/Gross and sheet1 for refunds/rto
+    const rows = aggregateCombined(ordersVals, amazonValues, startDate, endDate);
 
-    // Render
-    renderAmazonTable(agg);
+    // Compute promo summary (Buy2) by summing promoQty and promoDiscSum across rows
+    let promoSummary = { qty: 0, discount: 0 };
+    rows.forEach(r=>{
+      promoSummary.qty += (r.promoQty || 0);
+      promoSummary.discount += (r.promoDiscSum || 0);
+    });
 
-    // STEP Badge
-    const evalRes = evaluateStepTarget(agg.totals, startDate, endDate);
-    renderStepBadge(evalRes, startDate, endDate);
+    // Render table and totals
+    const out = renderAmazonCombinedTable(rows, stockMap);
+
+    // Compute and show STEP badge + promo line
+    const evalRes = renderStepAndPromo(out.totals, startDate, endDate, promoSummary);
 
   }catch(err){
     console.error(err);
@@ -682,7 +695,7 @@ async function loadAmazonSales(){
   }
 }
 
-// --- initialize UI
+// --- initialize UI (wire up apply + export buttons)
 (function initAmazonUI(){
   const applyBtn = document.getElementById("amzApply");
   const exportBtn = document.getElementById("amzExport");
@@ -694,6 +707,7 @@ async function loadAmazonSales(){
 
   loadAmazonSales();
 })();
+
 
 /* ====== FLIPKART SALES OVERVIEW (Google Sheets Integration) ====== */
 
@@ -976,6 +990,7 @@ endDate.setHours(23, 59, 59, 999); // include the entire end day
 
 </body>
 </html>
+
 
 
 
