@@ -557,9 +557,12 @@ function aggregateOrdersAndSheet1(ordersVals, sheetVals, orderStart, orderEnd, s
       rec.qty += qty;
       rec.gross += price; // as requested: gross is sum of item-price
       // track Buy2 promo rows (exact substring match)
-      if(typeof promoId === "string" && promoId.indexOf("Percentage Off 2025/08/27 7-27-42-779") !== -1){
+      // If this Orders row belongs to the "Buy 2 Get 15% OFF" promo id,
+// calculate discount as 15% of item-price (since item-price is already total)
+      if (typeof promoId === "string" && promoId.indexOf("Percentage Off 2025/08/27 7-27-42-779") !== -1) {
         rec.promoQty += qty;
-        rec.promoDiscountSum += promoDisc;
+        rec.promoDiscountSum += (price * 0.15);
+        console.log("Promo match:", sku, "Item price:", price, "→ Discount added:", price * 0.15);
       }
     }
   }
@@ -1080,6 +1083,7 @@ endDate.setHours(23, 59, 59, 999); // include the entire end day
 
 </body>
 </html>
+
 
 
 
