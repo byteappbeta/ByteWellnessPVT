@@ -768,12 +768,13 @@ async function loadAmazonSales(){
     const rows = aggregateOrdersAndSheet1(ordersVals, sheetVals, orderStart, orderEnd, sheetStart, sheetEnd);
 
   
-   // promo summary (Buy2 – 15% of item-price per promotion item)
-let promoSummary = { qty:0, discount:0 };
-rows.forEach(r=>{
+  // promo summary (Buy2 - actual 15% of item-price per promotion item)
+let promoSummary = { qty: 0, discount: 0 };
+rows.forEach(r => {
   promoSummary.qty += (r.promoQty || 0);
-  promoSummary.discount += (r.gross * 0.15 * ((r.promoQty || 0) > 0 ? 1 : 0)); // apply 15% on item-price if promo applied
+  promoSummary.discount += (r.promoDiscountSum || 0); // use computed value directly
 });
+
 
     // render table
     const totals = renderAmazonCombined(rows, stockMap);
@@ -1083,6 +1084,7 @@ endDate.setHours(23, 59, 59, 999); // include the entire end day
 
 </body>
 </html>
+
 
 
 
