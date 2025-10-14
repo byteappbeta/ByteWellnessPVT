@@ -262,7 +262,7 @@ async function showWarehouse(name) {
   });
 } // ✅ clean ending
 
-  /* ====== ALL-IN-ONE WAREHOUSE (SUMMARY VIEW) ====== */
+  /* ====== ALL-IN-ONE WAREHOUSE (SUMMARY VIEW + EXPORT + SKU SUBSTITUTION) ====== */
 async function showAllWarehouses() {
   showSection("warehouse");
   const titleEl = document.getElementById("warehouseName");
@@ -272,11 +272,23 @@ async function showAllWarehouses() {
   const table = document.querySelector("#warehouse table");
   const thead = table.querySelector("thead");
   const tbody = table.querySelector("tbody");
+
+  // Add export button (only once)
+  if (!document.getElementById("exportAllBtn")) {
+    const btn = document.createElement("button");
+    btn.innerText = "Export CSV";
+    btn.id = "exportAllBtn";
+    btn.className = "export-btn";
+    btn.style.marginBottom = "10px";
+    btn.onclick = exportAllWarehouses;
+    syncedEl.insertAdjacentElement("afterend", btn);
+  }
+
   thead.innerHTML = "";
   tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>`;
 
   try {
-    /* 1️⃣ Fetch all required warehouse tabs */
+    /* 1️⃣ Fetch all warehouse tabs */
     const [masterRes, blrRes, mumRes, amzRes] = await Promise.all([
       fetchWarehouseData("Master"),
       fetchWarehouseData("Bangalore"),
@@ -284,7 +296,7 @@ async function showAllWarehouses() {
       fetchWarehouseData("Amazon")
     ]);
 
-    /* 2️⃣ Parse Amazon sheet for SKU list + Synced date */
+    /* 2️⃣ Parse Amazon for SKU list + synced date */
     const amzHdrs = amzRes.headers.map(h => (h || "").toLowerCase().trim());
     const skuIdx = amzHdrs.indexOf("sku");
     const availIdx = amzHdrs.indexOf("available");
@@ -357,22 +369,30 @@ async function showAllWarehouses() {
     /* 4️⃣ Prepare final table rows */
     const rows = [];
     amzMap.forEach((amzVal, sku) => {
-      const master = masterMap.get(sku) || {};
-      const blr = blrMap.get(sku) || {};
-      const mum = mumMap.get(sku) || {};
+      // --- Custom substitution logic ---
+      const lookupSku =
+        sku === "BF-NS-TRS" ? "NSTRIP-CLR2" : sku;
 
-      const mStr = master.labelled || master.nonlabelled
-        ? `${master.labelled || 0}(L)/${master.nonlabelled || 0}(NL)`
-        : "-";
-      const blrStr = blr.available || blr.days
-        ? `${blr.available || 0}(${blr.days || "-"})`
-        : "-";
-      const mumStr = mum.available || mum.days
-        ? `${mum.available || 0}(${mum.days || "-"})`
-        : "-";
-      const amzStr = amzVal.available || amzVal.days
-        ? `${amzVal.available || 0}(${amzVal.days || "-"})`
-        : "-";
+      const master = masterMap.get(lookupSku) || {};
+      const blr = blrMap.get(lookupSku) || {};
+      const mum = mumMap.get(lookupSku) || {};
+
+      const mStr =
+        master.labelled || master.nonlabelled
+          ? `${master.labelled || 0}(L)/${master.nonlabelled || 0}(NL)`
+          : "-";
+      const blrStr =
+        blr.available || blr.days
+          ? `${blr.available || 0}(${blr.days || "-"})`
+          : "-";
+      const mumStr =
+        mum.available || mum.days
+          ? `${mum.available || 0}(${mum.days || "-"})`
+          : "-";
+      const amzStr =
+        amzVal.available || amzVal.days
+          ? `${amzVal.available || 0}(${amzVal.days || "-"})`
+          : "-";
 
       rows.push({
         sku,
@@ -399,12 +419,9 @@ async function showAllWarehouses() {
     tbody.innerHTML = "";
 
     rows.forEach(r => {
-      const blrColor =
-        parseFloat(r.blrDays) < 10 ? "#FF4D4F" : "#333";
-      const mumColor =
-        parseFloat(r.mumDays) < 10 ? "#FF4D4F" : "#333";
-      const amzColor =
-        parseFloat(r.amzDays) < 20 ? "#FF4D4F" : "#333";
+      const blrColor = parseFloat(r.blrDays) < 10 ? "#FF4D4F" : "#333";
+      const mumColor = parseFloat(r.mumDays) < 10 ? "#FF4D4F" : "#333";
+      const amzColor = parseFloat(r.amzDays) < 20 ? "#FF4D4F" : "#333";
 
       const html = `
         <tr>
@@ -428,6 +445,35 @@ async function showAllWarehouses() {
   }
 }
 
+/* ===== EXPORT FUNCTION (with synced date) ===== */
+function exportAllWarehouses() {
+  const table = document.querySelector("#warehouse table");
+  const syncedText = document.getElementById("lastSynced").innerText || "";
+  let csv = "";
+
+  // include last synced info at the top
+  csv += `"${syncedText.replace(/"/g, '""')}"\n\n`;
+
+  // now export the visible table
+  const rows = table.querySelectorAll("tr");
+  rows.forEach(row => {
+    const cols = row.querySelectorAll("th,td");
+    const arr = [];
+    cols.forEach(c => arr.push(`"${c.innerText.replace(/"/g, '""')}"`));
+    csv += arr.join(",") + "\n";
+  });
+
+  // download file
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const syncDateMatch = syncedText.match(/\d{2}-\d{2}-\d{4}/);
+  const syncDate = syncDateMatch ? syncDateMatch[0] : "unknown";
+  a.href = url;
+  a.download = `All_Warehouses_${syncDate}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 /* ====== BLINKIT ====== */
 
@@ -1252,6 +1298,7 @@ endDate.setHours(23, 59, 59, 999); // include the entire end day
 
 </body>
 </html>
+
 
 
 
