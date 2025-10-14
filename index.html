@@ -273,23 +273,16 @@ async function showAllWarehouses() {
   const thead = table.querySelector("thead");
   const tbody = table.querySelector("tbody");
 
-  // Add export button beside "Last Synced" safely (shared structure)
-if (!document.getElementById("exportAllBtn")) {
-  const syncedEl = document.getElementById("lastSynced");
-  syncedEl.style.display = "flex";
-  syncedEl.style.justifyContent = "space-between";
-  syncedEl.style.alignItems = "center";
-  syncedEl.style.marginBottom = "10px";
-
-  const btn = document.createElement("button");
-  btn.innerText = "Export CSV";
-  btn.id = "exportAllBtn";
-  btn.className = "export-btn";
-  btn.onclick = exportAllWarehouses;
-
-  // Append button inside same div
-  syncedEl.appendChild(btn);
-}
+  // Add export button (only once)
+  if (!document.getElementById("exportAllBtn")) {
+    const btn = document.createElement("button");
+    btn.innerText = "Export CSV";
+    btn.id = "exportAllBtn";
+    btn.className = "export-btn";
+    btn.style.marginBottom = "10px";
+    btn.onclick = exportAllWarehouses;
+    syncedEl.insertAdjacentElement("afterend", btn);
+  }
 
   thead.innerHTML = "";
   tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>`;
@@ -1305,8 +1298,6 @@ endDate.setHours(23, 59, 59, 999); // include the entire end day
 
 </body>
 </html>
-
-
 
 
 
