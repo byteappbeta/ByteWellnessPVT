@@ -609,10 +609,10 @@ function aggregateOrdersAndSheet1(ordersVals, sheetVals, orderStart, orderEnd, s
   return rows;
 }
 
-// --- Evaluate STEP Premium with new rules
+// --- Evaluate STEP Premium with new rules (updated 15% discount logic + 0.95x gross)
 function evaluateStepNew(totals, startDate, endDate){
-  const targetSalesPerDay = 57836;
-  const targetQtyPerDay = 109;
+  const targetSalesPerDay = 55000;
+  const targetQtyPerDay = 110;
 
   const s = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
   const e = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
@@ -621,13 +621,15 @@ function evaluateStepNew(totals, startDate, endDate){
   const salesTarget = targetSalesPerDay * days;
   const qtyTarget = targetQtyPerDay * days;
 
-  const netSales = totals.gross - totals.refunds - totals.discount;
-  const netQty = totals.qty - totals.rto;
+  // apply new step logic
+  const netForStep = (0.95 * totals.gross) - totals.refunds - totals.discount;
+  const qtyEligible = totals.qty - totals.rto;
 
-  const fulfilled = (netSales >= salesTarget) || (netQty >= qtyTarget);
+  const fulfilled = (netForStep >= salesTarget) || (qtyEligible >= qtyTarget);
 
-  return { fulfilled, days, netSales, netQty, salesTarget, qtyTarget };
+  return { fulfilled, days, netForStep, qtyEligible, salesTarget, qtyTarget };
 }
+
 
 // --- Render combined Amazon table (SKU | Qty | Gross | RTO | Refunds | Days to Stockout)
 function renderAmazonCombined(rows, stockMap){
@@ -711,8 +713,9 @@ function renderStepAndPromo(totals, startDate, endDate, promoSummary){
     if(wrap) wrap.appendChild(promoLine);
   }
   promoLine.innerHTML = `
+  promoLine.innerHTML = `
   <span style="
-    background:#6f42c1;
+    background:#000000;
     color:white;
     padding:8px 12px;
     border-radius:999px;
@@ -768,12 +771,13 @@ async function loadAmazonSales(){
     // aggregate
     const rows = aggregateOrdersAndSheet1(ordersVals, sheetVals, orderStart, orderEnd, sheetStart, sheetEnd);
 
-    // promo summary (Buy2)
-    let promoSummary = { qty:0, discount:0 };
-    rows.forEach(r=>{
-      promoSummary.qty += (r.promoQty || 0);
-      promoSummary.discount += (r.promoDiscountSum || 0);
-    });
+  
+   // promo summary (Buy2 – 15% of item-price per promotion item)
+let promoSummary = { qty:0, discount:0 };
+rows.forEach(r=>{
+  promoSummary.qty += (r.promoQty || 0);
+  promoSummary.discount += (r.gross * 0.15 * ((r.promoQty || 0) > 0 ? 1 : 0)); // apply 15% on item-price if promo applied
+});
 
     // render table
     const totals = renderAmazonCombined(rows, stockMap);
@@ -1083,6 +1087,7 @@ endDate.setHours(23, 59, 59, 999); // include the entire end day
 
 </body>
 </html>
+
 
 
 
