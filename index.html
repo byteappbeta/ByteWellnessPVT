@@ -51,6 +51,7 @@
     <div class="card" onclick="showWarehouse('Mumbai')">Shiprocket - Mumbai</div>
     <div class="card" onclick="showWarehouse('Bangalore')">Shiprocket - Bangalore</div>
     <div class="card" onclick="showWarehouse('Amazon')">Amazon Warehouse</div>
+    <div class="card" onclick="showAllWarehouses()">All Warehouses</div>
   </div>
   <button class="btn" onclick="showSection('home')">Back</button>
 </div>
@@ -260,6 +261,173 @@ async function showWarehouse(name) {
     tbody.insertAdjacentHTML("beforeend", rowHTML);
   });
 } // ✅ clean ending
+
+  /* ====== ALL-IN-ONE WAREHOUSE (SUMMARY VIEW) ====== */
+async function showAllWarehouses() {
+  showSection("warehouse");
+  const titleEl = document.getElementById("warehouseName");
+  const syncedEl = document.getElementById("lastSynced");
+  titleEl.innerText = "All Warehouses";
+
+  const table = document.querySelector("#warehouse table");
+  const thead = table.querySelector("thead");
+  const tbody = table.querySelector("tbody");
+  thead.innerHTML = "";
+  tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>`;
+
+  try {
+    /* 1️⃣ Fetch all required warehouse tabs */
+    const [masterRes, blrRes, mumRes, amzRes] = await Promise.all([
+      fetchWarehouseData("Master"),
+      fetchWarehouseData("Bangalore"),
+      fetchWarehouseData("Mumbai"),
+      fetchWarehouseData("Amazon")
+    ]);
+
+    /* 2️⃣ Parse Amazon sheet for SKU list + Synced date */
+    const amzHdrs = amzRes.headers.map(h => (h || "").toLowerCase().trim());
+    const skuIdx = amzHdrs.indexOf("sku");
+    const availIdx = amzHdrs.indexOf("available");
+    const daysIdx = amzHdrs.indexOf("days to stockout");
+    const syncIdx = amzHdrs.indexOf("synced at");
+    let lastSynced = "";
+    if (syncIdx !== -1 && amzRes.data.length > 0) {
+      const raw = (amzRes.data[0][syncIdx] || "").trim();
+      if (raw.includes("/")) {
+        const [dd, mm, yy] = raw.split("/");
+        lastSynced = `${dd}-${mm}-${yy}`;
+      } else if (raw.includes("-")) {
+        const parts = raw.split("-");
+        if (parts[0].length === 4) {
+          const [yyyy, mm, dd] = raw.substring(0, 10).split("-");
+          lastSynced = `${dd}-${mm}-${yyyy}`;
+        } else {
+          lastSynced = raw.substring(0, 10);
+        }
+      }
+    }
+    syncedEl.innerText = "LAST SYNCED: " + (lastSynced || "N/A");
+
+    const amzMap = new Map();
+    amzRes.data.forEach(r => {
+      const sku = (r[skuIdx] || "").trim();
+      if (!sku) return;
+      amzMap.set(sku, {
+        available: r[availIdx] || "",
+        days: r[daysIdx] || ""
+      });
+    });
+
+    /* 3️⃣ Build lookup maps for other warehouses */
+    function mapFromData(res, keys) {
+      const hdrs = res.headers.map(h => (h || "").toLowerCase().trim());
+      const map = new Map();
+      if (keys.type === "master") {
+        const skuI = hdrs.indexOf("sku");
+        const labI = hdrs.indexOf("labelled");
+        const nonLabI = hdrs.indexOf("non labelled");
+        res.data.forEach(r => {
+          const sku = (r[skuI] || "").trim();
+          if (!sku) return;
+          map.set(sku, {
+            labelled: r[labI] || 0,
+            nonlabelled: r[nonLabI] || 0
+          });
+        });
+      } else {
+        const skuI = hdrs.indexOf("sku");
+        const availI = hdrs.indexOf("available");
+        const daysI = hdrs.indexOf("days to stockout");
+        res.data.forEach(r => {
+          const sku = (r[skuI] || "").trim();
+          if (!sku) return;
+          map.set(sku, {
+            available: r[availI] || "",
+            days: r[daysI] || ""
+          });
+        });
+      }
+      return map;
+    }
+
+    const masterMap = mapFromData(masterRes, { type: "master" });
+    const blrMap = mapFromData(blrRes, { type: "sr" });
+    const mumMap = mapFromData(mumRes, { type: "sr" });
+
+    /* 4️⃣ Prepare final table rows */
+    const rows = [];
+    amzMap.forEach((amzVal, sku) => {
+      const master = masterMap.get(sku) || {};
+      const blr = blrMap.get(sku) || {};
+      const mum = mumMap.get(sku) || {};
+
+      const mStr = master.labelled || master.nonlabelled
+        ? `${master.labelled || 0}(L)/${master.nonlabelled || 0}(NL)`
+        : "-";
+      const blrStr = blr.available || blr.days
+        ? `${blr.available || 0}(${blr.days || "-"})`
+        : "-";
+      const mumStr = mum.available || mum.days
+        ? `${mum.available || 0}(${mum.days || "-"})`
+        : "-";
+      const amzStr = amzVal.available || amzVal.days
+        ? `${amzVal.available || 0}(${amzVal.days || "-"})`
+        : "-";
+
+      rows.push({
+        sku,
+        master: mStr,
+        blr: blrStr,
+        mum: mumStr,
+        amz: amzStr,
+        blrDays: blr.days,
+        mumDays: mum.days,
+        amzDays: amzVal.days
+      });
+    });
+
+    /* 5️⃣ Render table */
+    thead.innerHTML = `
+      <tr>
+        <th>SKU</th>
+        <th>Master</th>
+        <th>SR-BLR</th>
+        <th>SR-MUM</th>
+        <th>Amazon</th>
+      </tr>
+    `;
+    tbody.innerHTML = "";
+
+    rows.forEach(r => {
+      const blrColor =
+        parseFloat(r.blrDays) < 10 ? "#FF4D4F" : "#333";
+      const mumColor =
+        parseFloat(r.mumDays) < 10 ? "#FF4D4F" : "#333";
+      const amzColor =
+        parseFloat(r.amzDays) < 20 ? "#FF4D4F" : "#333";
+
+      const html = `
+        <tr>
+          <td>${r.sku}</td>
+          <td>${r.master}</td>
+          <td style="color:${blrColor};font-weight:600;">${r.blr}</td>
+          <td style="color:${mumColor};font-weight:600;">${r.mum}</td>
+          <td style="color:${amzColor};font-weight:600;">${r.amz}</td>
+        </tr>
+      `;
+      tbody.insertAdjacentHTML("beforeend", html);
+    });
+
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No SKUs found in Amazon sheet.</td></tr>`;
+    }
+  } catch (err) {
+    console.error("All Warehouses load error:", err);
+    tbody.innerHTML = `<tr><td colspan="5" style="color:red;text-align:center;">Error loading data. Check console.</td></tr>`;
+    document.getElementById("lastSynced").innerText = "LAST SYNCED: N/A";
+  }
+}
+
 
 /* ====== BLINKIT ====== */
 
@@ -1084,6 +1252,7 @@ endDate.setHours(23, 59, 59, 999); // include the entire end day
 
 </body>
 </html>
+
 
 
 
