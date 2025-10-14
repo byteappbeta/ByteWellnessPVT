@@ -713,19 +713,12 @@ function renderStepAndPromo(totals, startDate, endDate, promoSummary){
     if(wrap) wrap.appendChild(promoLine);
   }
   promoLine.innerHTML = `
-  promoLine.innerHTML = `
-  <span style="
-    background:#000000;
-    color:white;
-    padding:8px 12px;
-    border-radius:999px;
-    font-weight:700;
-    text-transform:uppercase;
-    display:inline-block;
-    text-align:center;">
+  <span style="background:#000000;color:white;padding:8px 12px;border-radius:999px;
+  font-weight:700;text-transform:uppercase;display:inline-block;text-align:center;">
     BUY 2 GET 15% OFF — Rs.${moneyInt(promoSummary.discount || 0)} (${promoSummary.qty || 0} units)
   </span>
 `;
+
 promoLine.style.marginTop = "4px";
 promoLine.style.textAlign = "center";
 
@@ -1087,6 +1080,7 @@ endDate.setHours(23, 59, 59, 999); // include the entire end day
 
 </body>
 </html>
+
 
 
 
