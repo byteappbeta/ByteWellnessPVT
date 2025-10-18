@@ -165,44 +165,29 @@
 </div>
 
   <!-- START: Shopify Sales Section (standalone paste) -->
-<div class="container hidden" id="shopifySalesSection" style="max-width:1100px; margin:20px auto;">
-  <h2 style="font-weight:700; text-align:center; margin-top:10px; color:#1C39BB; text-transform:uppercase;">
+<div id="shopifySalesSection" class="container hidden">
+  <h2 style="font-weight:700; text-align:center; margin-top:20px; color:#1C39BB; text-transform:uppercase;">
     Shopify Sales
   </h2>
 
-  <div class="filters" style="text-align:center; margin:16px 0;">
-    From: <input type="date" id="shopFrom" style="padding:8px; margin-right:10px;">
-    To: <input type="date" id="shopTo" style="padding:8px; margin-right:14px;">
-    <button id="shopApply" class="btn" style="background:#1C39BB; margin-right:10px;">APPLY</button>
-    <button id="shopExport" class="btn" style="background:#0f915a;">EXPORT CSV</button>
+  <!-- Date Range Filter -->
+  <div class="filters">
+    From: <input type="date" id="shopifyStart">
+    To: <input type="date" id="shopifyEnd">
+    <button id="shopifyApply" class="btn">Apply</button>
+    <button id="shopifyExport" class="btn" style="background:#0f915a;">Export CSV</button>
   </div>
 
-  <table id="shopifyTable" style="width:100%; border-collapse:collapse; background:white; border-radius:12px; overflow:hidden; box-shadow:0 5px 20px rgba(0,0,0,0.1); text-align:center; font-weight:500; font-size:16px; margin-top:10px;">
-    <thead style="background:#1C39BB; color:white;">
-      <tr>
-        <th style="padding:14px; text-transform:uppercase; letter-spacing:1px; text-align:left;">SKU</th>
-        <th style="padding:14px; text-transform:uppercase; letter-spacing:1px;">QTY</th>
-        <th style="padding:14px; text-transform:uppercase; letter-spacing:1px;">GROSS</th>
-        <th style="padding:14px; text-transform:uppercase; letter-spacing:1px;">RTO</th>
-        <th style="padding:14px; text-transform:uppercase; letter-spacing:1px;">REFUNDS</th>
-      </tr>
-    </thead>
+  <!-- Table -->
+  <table id="shopifyTable">
+    <thead></thead>
     <tbody></tbody>
-    <tfoot style="background:#f0f0f0; font-weight:700;">
-      <tr>
-        <td style="padding:12px; text-align:left;">TOTAL</td>
-        <td id="shopTotalQty" style="padding:12px;">0</td>
-        <td id="shopTotalGross" style="padding:12px;">0</td>
-        <td id="shopTotalRto" style="padding:12px;">0</td>
-        <td id="shopTotalRefunds" style="padding:12px;">0</td>
-      </tr>
-    </tfoot>
+    <tfoot></tfoot>
   </table>
 
-  <div style="text-align:left; margin-top:14px;">
-    <button class="btn" onclick="showSection('salesOverview')" style="background:#1C39BB;">BACK TO OVERVIEW</button>
-  </div>
+  <button class="btn" onclick="showSection('salesOverview')">Back to Overview</button>
 </div>
+
 
 <script>
 /* ====== CONFIG ====== */
@@ -1335,349 +1320,249 @@ endDate.setHours(23, 59, 59, 999); // include the entire end day
 </script>
 
 <script>
+/* ====== SHOPIFY SALES SECTION ====== */
 
-/<!-- START: Shopify Sales Section (standalone paste) -->
-    
-const SHOP_API_KEY = "AIzaSyD6yREIVE1b8hq0kiYqFoJBfsLzPiGGv4k"; // confirmed by you
-const SHOP_SHEET_ID = "1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJkv";
-const SHOP_TAB = "Sheet1";
+const SHOPIFY_SHEET_ID = "1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJkv";
+const SHOPIFY_SHEET_TAB = "Sheet1";
+const API_KEY = "AIzaSyD6yREIVE1b8hq0kiYqFoJBfsLzPiGGv4k";
 
-/* ===== Date helpers ===== */
-function parseSheetDate(val){
-  if(val === null || val === undefined) return null;
+/* --- Helpers --- */
+function parseShopifyDate(val) {
+  if (!val) return null;
   const s = String(val).trim();
-  if(!s) return null;
-  if(/^\d{4}-\d{2}-\d{2}/.test(s)){
-    const [y,m,d] = s.substring(0,10).split("-");
-    return new Date(Number(y), Number(m)-1, Number(d));
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const [y, m, d] = s.substring(0, 10).split("-");
+    return new Date(+y, +m - 1, +d);
   }
-  if(/^\d{2}-\d{2}-\d{4}$/.test(s)){
-    const [d,m,y] = s.split("-");
-    return new Date(Number(y), Number(m)-1, Number(d));
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+    const [dd, mm, yyyy] = s.split("/");
+    return new Date(+yyyy, +mm - 1, +dd);
   }
-  if(/^\d{2}\/\d{2}\/\d{4}$/.test(s)){
-    const [d,m,y] = s.split("/");
-    return new Date(Number(y), Number(m)-1, Number(d));
+  if (/^\d{2}-\d{2}-\d{4}$/.test(s)) {
+    const [dd, mm, yyyy] = s.split("-");
+    return new Date(+yyyy, +mm - 1, +dd);
   }
   const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
 }
-function dateToYMD(date){
-  const m = String(date.getMonth()+1).padStart(2,"0");
-  const d = String(date.getDate()).padStart(2,"0");
-  return `${date.getFullYear()}-${m}-${d}`;
-}
-function isBetweenInclusive(d, start, end){
-  if(!d) return false;
-  const t = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const s = start ? new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime() : -Infinity;
-  const e = end ? new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime() : Infinity;
-  return t >= s && t <= e;
+
+function toNum(n) {
+  const x = parseFloat(String(n || "").replace(/,/g, ""));
+  return isNaN(x) ? 0 : x;
 }
 
-/* ===== Fetch sheet values ===== */
-async function fetchShopifyValues(){
-  const range = encodeURIComponent(SHOP_TAB);
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHOP_SHEET_ID}/values/${range}?key=${SHOP_API_KEY}`;
+/* --- Fetch Data --- */
+async function fetchShopifyValues() {
+  const range = `${encodeURIComponent(SHOPIFY_SHEET_TAB)}!A1:Z`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHOPIFY_SHEET_ID}/values/${range}?key=${API_KEY}`;
   const res = await fetch(url);
   const json = await res.json();
   return json.values || [];
 }
 
-/* ===== Utility: find header index tolerant ===== */
-function findHeaderIndex(headers, name){
-  name = name.toLowerCase();
-  for(let i=0;i<headers.length;i++){
-    if(!headers[i]) continue;
-    const h = headers[i].toString().trim().toLowerCase();
-    if(h === name) return i;
-    if(h.includes(name)) return i;
-    if(name.split(" ")[0] && h.includes(name.split(" ")[0])) return i;
+/* --- Group Data by Order ID --- */
+function processShopifyData(values, startDate, endDate) {
+  if (!values || values.length < 2) return [];
+
+  const headers = values[0].map(h => (h || "").toString().trim().toLowerCase());
+  const idxOrderId = headers.indexOf("order id");
+  const idxCreated = headers.indexOf("shiprocket created at");
+  const idxSku = headers.indexOf("master sku");
+  const idxQty = headers.indexOf("product quantity");
+  const idxTotal = headers.indexOf("order total");
+  const idxRto = headers.indexOf("rto initiated date");
+
+  const orderMap = new Map();
+  const rtoMap = new Map();
+
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    const orderId = (row[idxOrderId] || "").trim();
+    const sku = (row[idxSku] || "").trim();
+    const qty = toNum(row[idxQty]);
+    const total = toNum(row[idxTotal]);
+    const createdAt = parseShopifyDate(row[idxCreated]);
+    const rtoDate = parseShopifyDate(row[idxRto]);
+
+    if (!orderId || !sku) continue;
+
+    // ---- Gross & Qty by Created At ----
+    if (createdAt && (!startDate || createdAt >= startDate) && (!endDate || createdAt <= endDate)) {
+      if (!orderMap.has(orderId)) orderMap.set(orderId, { skus: [], total });
+      orderMap.get(orderId).skus.push({ sku, qty });
+    }
+
+    // ---- RTO & Refunds by RTO Initiated Date ----
+    if (rtoDate && (!startDate || rtoDate >= startDate) && (!endDate || rtoDate <= endDate)) {
+      if (!rtoMap.has(orderId)) rtoMap.set(orderId, { skus: [], total });
+      rtoMap.get(orderId).skus.push({ sku, qty });
+      rtoMap.get(orderId).total = total;
+    }
   }
-  return -1;
+
+  // ---- Combine by SKU/Combo ----
+  const combined = new Map();
+
+  // Regular (Gross/Qty)
+  for (const [orderId, obj] of orderMap.entries()) {
+    const isCombo = obj.skus.length > 1;
+    const skuName = isCombo
+      ? obj.skus.map(s => s.sku).join("+")
+      : obj.skus[0].sku;
+
+    const qtyStr = isCombo
+      ? obj.skus.map(s => s.qty).join("+")
+      : obj.skus[0].qty.toString();
+
+    if (!combined.has(skuName))
+      combined.set(skuName, { sku: skuName, qty: 0, gross: 0, rto: 0, refunds: 0 });
+
+    const rec = combined.get(skuName);
+    rec.gross += obj.total;
+    rec.qty += isCombo ? 1 : obj.skus[0].qty;
+    rec.qtyStr = isCombo ? qtyStr : rec.qty.toString();
+  }
+
+  // RTO/Refunds
+  for (const [orderId, obj] of rtoMap.entries()) {
+    const isCombo = obj.skus.length > 1;
+    const skuName = isCombo
+      ? obj.skus.map(s => s.sku).join("+")
+      : obj.skus[0].sku;
+
+    if (!combined.has(skuName))
+      combined.set(skuName, { sku: skuName, qty: 0, gross: 0, rto: 0, refunds: 0 });
+
+    const rec = combined.get(skuName);
+    rec.rto += isCombo ? 1 : obj.skus[0].qty;
+    rec.refunds += obj.total;
+  }
+
+  return Array.from(combined.values());
 }
 
-/* ===== Main loader (with condensed combo counting) ===== */
-async function loadShopifySales(){
-  try{
-    const fromVal = document.getElementById("shopFrom").value;
-    const toVal = document.getElementById("shopTo").value;
-    if(!fromVal || !toVal){ alert("Please select From and To dates."); return; }
+/* --- Render Table --- */
+function renderShopifyTable(rows) {
+  const tbl = document.getElementById("shopifyTable");
+  const thead = tbl.querySelector("thead");
+  const tbody = tbl.querySelector("tbody");
+  const tfoot = tbl.querySelector("tfoot");
 
-    const fromDate = new Date(fromVal);
-    const toDate = new Date(toVal);
+  thead.innerHTML = `
+    <tr>
+      <th>SKU</th>
+      <th>Qty</th>
+      <th>Gross</th>
+      <th>RTO</th>
+      <th>Refunds</th>
+    </tr>
+  `;
 
-    const values = await fetchShopifyValues();
-    if(!values || values.length < 2){
-      renderEmpty();
-      return;
-    }
-
-    const headers = values[0].map(h => (h||"").toString().trim());
-    const idxOrder = findHeaderIndex(headers, "order id");
-    const idxCreated = findHeaderIndex(headers, "shiprocket created at");
-    const idxRto = findHeaderIndex(headers, "rto initiated date");
-    const idxSku = findHeaderIndex(headers, "master sku");
-    const idxQty = findHeaderIndex(headers, "product quantity");
-    const idxTotal = findHeaderIndex(headers, "order total");
-
-    if(idxOrder === -1 || idxSku === -1){
-      alert("Required columns missing (Order ID / Master SKU).");
-      return;
-    }
-
-    // group rows by Order ID
-    const orders = new Map();
-    for(let i=1;i<values.length;i++){
-      const row = values[i];
-      const orderId = (row[idxOrder]||"").toString().trim();
-      if(!orderId) continue;
-      const createdRaw = idxCreated !== -1 ? (row[idxCreated]||"") : "";
-      const rtoRaw = idxRto !== -1 ? (row[idxRto]||"") : "";
-      const sku = (row[idxSku]||"").toString().trim();
-      const qtyRaw = idxQty !== -1 ? (row[idxQty]||"") : "0";
-      const qtyNum = qtyRaw === "" ? 0 : Math.round(Number(String(qtyRaw).replace(/,/g,"")) || 0);
-      const totalRaw = idxTotal !== -1 ? (row[idxTotal]||"") : "";
-      const totalNum = totalRaw === "" ? 0 : Number(String(totalRaw).replace(/,/g,"")) || 0;
-
-      const createdDate = parseSheetDate(createdRaw);
-      const rtoDate = parseSheetDate(rtoRaw);
-
-      if(!orders.has(orderId)){
-        orders.set(orderId, { skus:[], qtys:[], createdDate: createdDate, rtoDate: rtoDate, total: totalNum });
-      }
-      const rec = orders.get(orderId);
-      if(!rec.createdDate && createdDate) rec.createdDate = createdDate;
-      if(!rec.rtoDate && rtoDate) rec.rtoDate = rtoDate;
-      rec.skus.push(sku || "");
-      rec.qtys.push(qtyNum);
-      if(!rec.total && totalNum) rec.total = totalNum;
-    }
-
-    // aggregates
-    const singleMap = new Map();
-    const comboMap = new Map();
-
-    let numericTotalQty = 0;
-    let numericTotalGross = 0;
-    let numericTotalRto = 0;
-    let numericTotalRefunds = 0;
-
-    const createdFrom = fromDate, createdTo = toDate;
-    const rtoFrom = fromDate, rtoTo = toDate;
-
-    // iterate orders and populate maps
-    for(const [orderId, rec] of orders.entries()){
-      const createdIn = rec.createdDate ? isBetweenInclusive(rec.createdDate, createdFrom, createdTo) : false;
-      const rtoIn = rec.rtoDate ? isBetweenInclusive(rec.rtoDate, rtoFrom, rtoTo) : false;
-      const hasMultiple = rec.skus.length > 1;
-
-      // Created-range (Qty & Gross)
-      if(createdIn){
-        if(!hasMultiple){
-          const sku = rec.skus[0] || "";
-          const qty = rec.qtys[0] || 0;
-          const prev = singleMap.get(sku) || { qtySum:0, grossSum:0, rtoQtySum:0, refundsSum:0 };
-          prev.qtySum += qty;
-          prev.grossSum += rec.total || 0;
-          singleMap.set(sku, prev);
-
-          numericTotalQty += qty;
-          numericTotalGross += (rec.total || 0);
-        } else {
-          const comboKey = rec.skus.join(" + ");
-          const qtyStr = rec.qtys.map(n=>String(n||0)).join("+");
-          const prev = comboMap.get(comboKey) || { qtyStrings:{}, grossSum:0, rtoQtyStrings:{}, refundsSum:0, numericQtySum:0, numericRtoQtySum:0 };
-          prev.qtyStrings[qtyStr] = (prev.qtyStrings[qtyStr] || 0) + 1;
-          prev.grossSum += rec.total || 0;
-          prev.numericQtySum += rec.qtys.reduce((a,b)=>a+b,0);
-          comboMap.set(comboKey, prev);
-
-          numericTotalQty += rec.qtys.reduce((a,b)=>a+b,0);
-          numericTotalGross += (rec.total || 0);
-        }
-      }
-
-      // RTO-range (RTO & Refunds)
-      if(rtoIn){
-        if(!hasMultiple){
-          const sku = rec.skus[0] || "";
-          const qty = rec.qtys[0] || 0;
-          const prev = singleMap.get(sku) || { qtySum:0, grossSum:0, rtoQtySum:0, refundsSum:0 };
-          prev.rtoQtySum = (prev.rtoQtySum || 0) + qty;
-          prev.refundsSum = (prev.refundsSum || 0) + (rec.total || 0);
-          singleMap.set(sku, prev);
-
-          numericTotalRto += qty;
-          numericTotalRefunds += (rec.total || 0);
-        } else {
-          const comboKey = rec.skus.join(" + ");
-          const qtyStr = rec.qtys.map(n=>String(n||0)).join("+");
-          const prev = comboMap.get(comboKey) || { qtyStrings:{}, grossSum:0, rtoQtyStrings:{}, refundsSum:0, numericQtySum:0, numericRtoQtySum:0 };
-          prev.rtoQtyStrings[qtyStr] = (prev.rtoQtyStrings[qtyStr] || 0) + 1;
-          prev.refundsSum += (rec.total || 0);
-          prev.numericRtoQtySum = (prev.numericRtoQtySum || 0) + rec.qtys.reduce((a,b)=>a+b,0);
-          comboMap.set(comboKey, prev);
-
-          numericTotalRto += rec.qtys.reduce((a,b)=>a+b,0);
-          numericTotalRefunds += (rec.total || 0);
-        }
-      }
-    }
-
-    // Build rows
-    const rows = [];
-
-    // singles
-    for(const [sku, data] of singleMap.entries()){
-      const row = {
-        key: sku,
-        sku: sku,
-        displayQty: data.qtySum ? String(data.qtySum) : "0",
-        numericQty: data.qtySum || 0,
-        gross: data.grossSum || 0,
-        rtoDisplay: data.rtoQtySum ? String(data.rtoQtySum) : "0",
-        rtoNumeric: data.rtoQtySum || 0,
-        refunds: data.refundsSum || 0
-      };
-      if(row.numericQty || row.gross || row.rtoNumeric || row.refunds) rows.push(row);
-    }
-
-    // combos (condensed with xN)
-    for(const [combo, data] of comboMap.entries()){
-      const qtyDisplayParts = Object.entries(data.qtyStrings).map(([pattern,count]) => count>1 ? `${pattern} (x${count})` : pattern);
-      const rtoDisplayParts = Object.entries((data.rtoQtyStrings)||{}).map(([pattern,count]) => count>1 ? `${pattern} (x${count})` : pattern);
-      const displayQty = qtyDisplayParts.join(", ");
-      const rtoDisplay = rtoDisplayParts.length ? rtoDisplayParts.join(", ") : "0";
-      const numericQty = data.numericQtySum || 0;
-      const numericRto = data.numericRtoQtySum || 0;
-
-      const row = {
-        key: combo,
-        sku: combo,
-        displayQty: displayQty || "0",
-        numericQty: numericQty,
-        gross: data.grossSum || 0,
-        rtoDisplay: rtoDisplay,
-        rtoNumeric: numericRto,
-        refunds: data.refundsSum || 0
-      };
-      if(row.numericQty || row.gross || row.rtoNumeric || row.refunds) rows.push(row);
-    }
-
-    // sort rows for readability
-    rows.sort((a,b) => (b.numericQty - a.numericQty) || (b.gross - a.gross));
-
-    // Render
-    renderShopifyTable(rows, numericTotalQty, numericTotalGross, numericTotalRto, numericTotalRefunds);
-
-  } catch(err){
-    console.error("Shopify loader error:", err);
-    renderEmpty();
-  }
-}
-
-/* ===== Render helpers ===== */
-function renderShopifyTable(rows, totalQty, totalGross, totalRto, totalRefunds){
-  const tbody = document.querySelector("#shopifyTable tbody");
-  tbody.innerHTML = "";
-  if(!rows || rows.length === 0){
-    renderEmpty();
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No data for this range.</td></tr>`;
+    tfoot.innerHTML = "";
     return;
   }
-  rows.forEach(r=>{
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td style="padding:12px; border-bottom:1px solid #eee; text-align:left;">${escapeHtml(r.sku)}</td>
-      <td style="padding:12px; border-bottom:1px solid #eee;">${escapeHtml(r.displayQty || "0")}</td>
-      <td style="padding:12px; border-bottom:1px solid #eee;">${Math.round(r.gross || 0)}</td>
-      <td style="padding:12px; border-bottom:1px solid #eee;">${escapeHtml(r.rtoDisplay || "0")}</td>
-      <td style="padding:12px; border-bottom:1px solid #eee;">${Math.round(r.refunds || 0)}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-  document.getElementById("shopTotalQty").innerText = totalQty || 0;
-  document.getElementById("shopTotalGross").innerText = Math.round(totalGross || 0);
-  document.getElementById("shopTotalRto").innerText = totalRto || 0;
-  document.getElementById("shopTotalRefunds").innerText = Math.round(totalRefunds || 0);
+
+  let totalQty = 0,
+    totalGross = 0,
+    totalRTO = 0,
+    totalRefunds = 0;
+
+  tbody.innerHTML = rows
+    .map(r => {
+      totalQty += r.qty;
+      totalGross += r.gross;
+      totalRTO += r.rto;
+      totalRefunds += r.refunds;
+
+      return `
+        <tr>
+          <td>${r.sku}</td>
+          <td>${r.qtyStr || r.qty}</td>
+          <td>${r.gross.toFixed(0)}</td>
+          <td>${r.rto}</td>
+          <td>${r.refunds.toFixed(0)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  tfoot.innerHTML = `
+    <tr>
+      <td><b>TOTAL</b></td>
+      <td><b>${totalQty}</b></td>
+      <td><b>${totalGross.toFixed(0)}</b></td>
+      <td><b>${totalRTO}</b></td>
+      <td><b>${totalRefunds.toFixed(0)}</b></td>
+    </tr>
+  `;
 }
 
-function renderEmpty(){
-  const tbody = document.querySelector("#shopifyTable tbody");
-  tbody.innerHTML = `<tr><td colspan="5" style="padding:18px; text-align:center;">No data available for selected range</td></tr>`;
-  document.getElementById("shopTotalQty").innerText = 0;
-  document.getElementById("shopTotalGross").innerText = 0;
-  document.getElementById("shopTotalRto").innerText = 0;
-  document.getElementById("shopTotalRefunds").innerText = 0;
-}
-
-function escapeHtml(s){ return (s==null)?"":String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-
-/* ===== Export CSV (visible table + totals) ===== */
-function exportShopifyCSV(){
+/* --- Export CSV --- */
+function exportShopifyCSV() {
   const table = document.getElementById("shopifyTable");
   let csv = "";
-  const f = document.getElementById("shopFrom").value;
-  const t = document.getElementById("shopTo").value;
-  csv += `"Shopify Sales - ${f} to ${t}"\n\n`;
-
-  // header row
-  const headers = ["SKU","QTY","GROSS","RTO","REFUNDS"];
-  csv += headers.map(h => `"${h}"`).join(",") + "\n";
-
-  // body rows
-  table.querySelectorAll("tbody tr").forEach(tr=>{
-    const cols = tr.querySelectorAll("td");
-    if(cols.length === 0) return;
-    const arr = Array.from(cols).map(td => `"${td.innerText.replace(/"/g,'""')}"`);
-    csv += arr.join(",") + "\n";
+  table.querySelectorAll("tr").forEach(tr => {
+    const cols = tr.querySelectorAll("th,td");
+    const line = Array.from(cols)
+      .map(td => `"${td.innerText.replace(/"/g, '""')}"`)
+      .join(",");
+    csv += line + "\n";
   });
-
-  // totals
-  const totals = [
-    "TOTAL",
-    document.getElementById("shopTotalQty").innerText,
-    document.getElementById("shopTotalGross").innerText,
-    document.getElementById("shopTotalRto").innerText,
-    document.getElementById("shopTotalRefunds").innerText
-  ];
-  csv += totals.map(t => `"${t}"`).join(",") + "\n";
-
   const blob = new Blob([csv], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  const dt = new Date();
-  const stamp = `${dt.getFullYear()}${String(dt.getMonth()+1).padStart(2,"0")}${String(dt.getDate()).padStart(2,"0")}`;
-  a.download = `shopify_sales_${stamp}.csv`;
+  a.download = "shopify_sales.csv";
   a.click();
   URL.revokeObjectURL(url);
 }
 
-/* ===== Init UI (yesterday default) ===== */
-(function initShopifyUI(){
+/* --- Load Data --- */
+async function loadShopifySales() {
+  const startVal = document.getElementById("shopifyStart").value;
+  const endVal = document.getElementById("shopifyEnd").value;
+  if (!startVal || !endVal) return alert("Please select a valid date range.");
+
+  const start = new Date(startVal);
+  const end = new Date(endVal);
+  end.setHours(23, 59, 59, 999);
+
+  const tbl = document.getElementById("shopifyTable").querySelector("tbody");
+  tbl.innerHTML = `<tr><td colspan="5" style="text-align:center;">Fetching Shopify data...</td></tr>`;
+
+  const values = await fetchShopifyValues();
+  const rows = processShopifyData(values, start, end);
+  renderShopifyTable(rows);
+}
+
+/* --- Initialize --- */
+(function initShopifyUI() {
+  const applyBtn = document.getElementById("shopifyApply");
+  const exportBtn = document.getElementById("shopifyExport");
+  if (!applyBtn) return;
+
+  // Default yesterday
   const today = new Date();
-  const y = new Date(today); y.setDate(today.getDate() - 1);
-  const yStr = dateToYMD(y);
+  const y = new Date(today);
+  y.setDate(today.getDate() - 1);
+  const yStr = y.toISOString().slice(0, 10);
+  document.getElementById("shopifyStart").value = yStr;
+  document.getElementById("shopifyEnd").value = yStr;
 
-  const from = document.getElementById("shopFrom");
-  const to = document.getElementById("shopTo");
-  from.value = yStr;
-  to.value = yStr;
-
-  document.getElementById("shopApply").addEventListener("click", loadShopifySales);
-  document.getElementById("shopExport").addEventListener("click", exportShopifyCSV);
+  applyBtn.addEventListener("click", loadShopifySales);
+  exportBtn.addEventListener("click", exportShopifyCSV);
 
   // Auto-load yesterday
   loadShopifySales();
 })();
-
-
 </script>
 
 
 </body>
 </html>
+
 
 
 
