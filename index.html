@@ -669,7 +669,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
   }
 });
 /* ====== NAVIGATION ====== */
-const SECTIONS=["home","inventory","warehouse","sales","salesOverview","salesShare","blinkit","amazonSales","flipkartSales"];
+const SECTIONS=["home","inventory","warehouse","sales","salesOverview","salesShare","blinkit","amazonSales","flipkartSales","shopifySalesSection"];
 function showSection(id){ SECTIONS.forEach(s=>document.getElementById(s).classList.add("hidden")); document.getElementById(id).classList.remove("hidden"); }
 </script>
 
@@ -1678,6 +1678,7 @@ function exportShopifyCSV(){
 
 </body>
 </html>
+
 
 
 
