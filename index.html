@@ -1663,7 +1663,36 @@ function exportShopifyCSV(){
       border-bottom: 1px solid #f0f0f0;
     }
 
-    /* ===== SUMMARY TABLE HEADER ===== */
+    /* ===== BLUE TABLE HEADER ===== */
+    #shopifyTable {
+      border-collapse: collapse;
+      border-spacing: 0;
+      width: 100%;
+      margin-top: 0;
+    }
+    #shopifyTable thead th {
+      background: #1C39BB !important;
+      color: #fff;
+      border: none;
+      padding: 14px;
+    }
+    #shopifyTable thead tr:first-child th:first-child {
+      border-top-left-radius: 12px;
+    }
+    #shopifyTable thead tr:first-child th:last-child {
+      border-top-right-radius: 12px;
+    }
+    #shopifyTable thead {
+      background-clip: padding-box;
+    }
+
+    /* ===== SUMMARY TABLE HEADER (BLACK) ===== */
+    #shopifySummary {
+      border-collapse: collapse;
+      border-spacing: 0;
+      width: 100%;
+      margin-top: 0;
+    }
     #shopifySummary thead th {
       background: #000 !important;
       color: #fff !important;
@@ -1671,7 +1700,16 @@ function exportShopifyCSV(){
       font-weight: 700;
       text-transform: uppercase;
       padding: 14px;
-      border-radius: 8px 8px 0 0;
+      border: none;
+    }
+    #shopifySummary thead tr:first-child th:first-child {
+      border-top-left-radius: 12px;
+    }
+    #shopifySummary thead tr:first-child th:last-child {
+      border-top-right-radius: 12px;
+    }
+    #shopifySummary thead {
+      background-clip: padding-box;
     }
 
     /* ===== INFO ICON TOOLTIP FIX ===== */
@@ -1706,52 +1744,36 @@ function exportShopifyCSV(){
       overflow: visible;
     }
 
-    /* ===== FIX WHITE PATCH ABOVE BLUE HEADER ===== */
-    #shopifyTable {
-      border-collapse: collapse;
-      border-spacing: 0;
-      width: 100%;
-      margin-top: 0;
-    }
-    #shopifyTable thead th {
-      background: #1C39BB !important;
-      color: #fff;
-      border: none;
-      padding: 14px;
-    }
-    #shopifyTable thead tr:first-child th:first-child {
-      border-top-left-radius: 12px;
-    }
-    #shopifyTable thead tr:first-child th:last-child {
-      border-top-right-radius: 12px;
-    }
-    #shopifyTable thead {
-      background-clip: padding-box;
-    }
-    #shopifySalesSection > div > table,
-    #shopifySalesSection > div {
-      margin-top: 0 !important;
-      padding-top: 0 !important;
-    }
-
-    /* ===== FILTER BAR SPACING ===== */
+    /* ===== FILTER BAR SPACING & ALIGNMENT ===== */
     #shopifySalesSection .filters {
       display: flex;
       justify-content: center;
       align-items: center;
       gap: 12px;
       margin-top: 20px;
-      margin-bottom: 24px; /* Adds space below filters */
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    #shopifySalesSection input[type="date"],
+    #shopifySalesSection .btn {
+      height: 38px;
+      line-height: 38px;
+      padding: 0 14px;
+      font-size: 15px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
     }
     #shopifySalesSection input[type="date"] {
-      padding: 6px 8px;
       border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 15px;
+      background: #fff;
     }
     #shopifySalesSection .btn {
       font-weight: 600;
       letter-spacing: 0.5px;
+      border: none;
     }
 
     /* ===== TABLES CONTAINER SPACING ===== */
@@ -1759,6 +1781,13 @@ function exportShopifyCSV(){
       margin-top: 10px;
       align-items: flex-start;
       gap: 20px;
+    }
+
+    /* ===== REMOVE TOP GAP BETWEEN TABLE AND CONTAINER ===== */
+    #shopifySalesSection > div > table,
+    #shopifySalesSection > div {
+      margin-top: 0 !important;
+      padding-top: 0 !important;
     }
 
     /* ===== RESPONSIVE ===== */
@@ -1770,6 +1799,7 @@ function exportShopifyCSV(){
   `;
   document.head.appendChild(style);
 })();
+
 
 
 /* Auto-load yesterday (safe) */
@@ -1797,6 +1827,7 @@ function exportShopifyCSV(){
 
 </body>
 </html>
+
 
 
 
