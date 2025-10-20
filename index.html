@@ -39,6 +39,17 @@
     .flipkart { background:#2874F0; color:white; }
     .blinkit { background:#F7E415; color:#333; }
   </style>
+  <!-- PWA Meta for Splash Screen & Theme -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1C39BB" />
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Byte Wellness">
+<link rel="apple-touch-icon" href="icon-512.png">
+
+<!-- iOS Splash Screens (auto adjusts for all devices) -->
+<link rel="apple-touch-startup-image" href="icon-512.png">
+
 </head>
 <body>
 <header>BYTE WELLNESS PVT</header>
@@ -1851,22 +1862,80 @@ function exportShopifyCSV(){
 
 </script>
 
-  <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      // Dynamically determine correct base path for GitHub Pages
-      const swPath = `${window.location.pathname.replace(/\/[^/]*$/, '/') }service-worker.js`;
-      navigator.serviceWorker.register(swPath)
-        .then(reg => console.log('✅ Service Worker registered:', reg.scope))
-        .catch(err => console.error('❌ Service Worker failed:', err));
-    });
-  }
+ 
+<script>
+  
+  <!-- PWA Installer + Service Worker -->
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('./service-worker.js')
+      .then(reg => {
+        console.log('✅ Service Worker registered:', reg.scope);
+
+        // Auto-update if new version detected
+        if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker?.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              console.log('⚡ New version available. Reloading...');
+              newWorker.postMessage({ type: 'SKIP_WAITING' });
+              window.location.reload();
+            }
+          });
+        });
+      })
+      .catch(err => console.error('❌ SW registration failed:', err));
+  });
+}
+
+// --- Install prompt for Android ---
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+
+  const installBtn = document.createElement('button');
+  installBtn.textContent = '📲 Install Byte Wellness App';
+  installBtn.className = 'btn';
+  Object.assign(installBtn.style, {
+    position: 'fixed',
+    bottom: '25px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    zIndex: '9999',
+    background: '#1C39BB',
+    color: '#fff',
+    border: 'none',
+    padding: '12px 20px',
+    borderRadius: '10px',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
+  });
+
+  document.body.appendChild(installBtn);
+  installBtn.addEventListener('click', async () => {
+    installBtn.style.display = 'none';
+    deferredPrompt.prompt();
+    const choice = await deferredPrompt.userChoice;
+    console.log('User install choice:', choice.outcome);
+    deferredPrompt = null;
+  });
+});
+
+window.addEventListener('appinstalled', () => {
+  console.log('✅ Byte Wellness App installed!');
+});
 </script>
+
 
 
 
 </body>
 </html>
+
 
 
 
