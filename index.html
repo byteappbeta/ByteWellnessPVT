@@ -1649,84 +1649,128 @@ function exportShopifyCSV(){
 (function injectShopifyStyles(){
   const style = document.createElement('style');
   style.textContent = `
-    /* Center headers + cells for Shopify section (SKU centered as requested) */
-    #shopifySalesSection thead th { text-align:center; vertical-align:middle; padding:14px; font-weight:700; }
-    #shopifySalesSection tbody td { text-align:center; vertical-align:middle; padding:12px 14px; border-bottom:1px solid #f0f0f0; }
-    /* Summary black header */
-    #shopifySummary thead th { background:#000 !important; color:#fff !important; text-align:center; }
-    .info-icon { font-size:12px; margin-left:6px; cursor:help; display:inline-block; vertical-align:middle; color:#1C39BB; }
-    /* custom tooltip bubble using the title attribute */
+    /* ===== GENERAL TABLE ALIGNMENT ===== */
+    #shopifySalesSection thead th {
+      text-align: center;
+      vertical-align: middle;
+      padding: 14px;
+      font-weight: 700;
+    }
+    #shopifySalesSection tbody td {
+      text-align: center;
+      vertical-align: middle;
+      padding: 12px 14px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    /* ===== SUMMARY TABLE HEADER ===== */
+    #shopifySummary thead th {
+      background: #000 !important;
+      color: #fff !important;
+      text-align: center;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 14px;
+      border-radius: 8px 8px 0 0;
+    }
+
+    /* ===== INFO ICON TOOLTIP FIX ===== */
+    .info-icon {
+      position: relative;
+      font-size: 12px;
+      margin-left: 6px;
+      cursor: help;
+      color: #1C39BB;
+      display: inline-block;
+      vertical-align: middle;
+    }
     .info-icon:hover::after {
       content: attr(title);
       position: absolute;
       bottom: 125%;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(0,0,0,0.85);
+      background: rgba(0,0,0,0.9);
       color: #fff;
       padding: 6px 8px;
       border-radius: 6px;
       font-size: 12px;
+      line-height: 1.4;
       white-space: nowrap;
-      z-index: 9999;
+      z-index: 10000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
       pointer-events: none;
     }
-    /* table corner polish */
-    #shopifyTable thead th, #shopifySummary thead th { border-radius:8px 8px 0 0; }
-    @media(max-width:900px){ .tables-container { grid-template-columns:1fr; } }
+    #shopifySummary td {
+      position: relative;
+      overflow: visible;
+    }
 
-    /* Info icon tooltip fix */
-.info-icon {
-  position: relative;
-  font-size: 12px;
-  margin-left: 6px;
-  cursor: help;
-  color: #1C39BB;
-}
+    /* ===== FIX WHITE PATCH ABOVE BLUE HEADER ===== */
+    #shopifyTable {
+      border-collapse: collapse;
+      border-spacing: 0;
+      width: 100%;
+      margin-top: 0;
+    }
+    #shopifyTable thead th {
+      background: #1C39BB !important;
+      color: #fff;
+      border: none;
+      padding: 14px;
+    }
+    #shopifyTable thead tr:first-child th:first-child {
+      border-top-left-radius: 12px;
+    }
+    #shopifyTable thead tr:first-child th:last-child {
+      border-top-right-radius: 12px;
+    }
+    #shopifyTable thead {
+      background-clip: padding-box;
+    }
+    #shopifySalesSection > div > table,
+    #shopifySalesSection > div {
+      margin-top: 0 !important;
+      padding-top: 0 !important;
+    }
 
-.info-icon:hover::after {
-  content: attr(title);
-  position: absolute;
-  bottom: 120%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.9);
-  color: #fff;
-  padding: 6px 8px;
-  border-radius: 6px;
-  font-size: 12px;
-  line-height: 1.4;
-  white-space: nowrap;
-  z-index: 10000;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-}
+    /* ===== FILTER BAR SPACING ===== */
+    #shopifySalesSection .filters {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      margin-top: 20px;
+      margin-bottom: 24px; /* Adds space below filters */
+    }
+    #shopifySalesSection input[type="date"] {
+      padding: 6px 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 15px;
+    }
+    #shopifySalesSection .btn {
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
 
-#shopifySummary td {
-  position: relative;  /* ensures tooltip positions correctly */
-  overflow: visible;   /* prevents clipping */
-}
-/* Fix white patch above blue header */
-#shopifyTable {
-  border-collapse: collapse;
-  width: 100%;
-  margin-top: 0;
-}
+    /* ===== TABLES CONTAINER SPACING ===== */
+    #shopifySalesSection .tables-container {
+      margin-top: 10px;
+      align-items: flex-start;
+      gap: 20px;
+    }
 
-#shopifyTable thead th {
-  background: #1C39BB;       /* ensure full header color coverage */
-  color: #fff;
-  border-top: none;
-}
-
-#shopifySalesSection > div > table,
-#shopifySalesSection > div {
-  margin-top: 0 !important;
-  padding-top: 0 !important;
-}
-
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 900px) {
+      .tables-container {
+        grid-template-columns: 1fr;
+      }
+    }
   `;
   document.head.appendChild(style);
 })();
+
 
 /* Auto-load yesterday (safe) */
 (function(){
@@ -1753,6 +1797,7 @@ function exportShopifyCSV(){
 
 </body>
 </html>
+
 
 
 
