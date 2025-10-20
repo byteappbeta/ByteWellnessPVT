@@ -73,6 +73,48 @@ body {
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+    /* ===== FORCE DESKTOP LAYOUT ON MOBILE ===== */
+@media (max-width: 9999px) {
+  /* Prevent mobile stacking */
+  .container, .warehouses, .grid, .tables-container {
+    width: 1200px !important;
+    max-width: 1200px !important;
+    margin: 0 auto !important;
+  }
+
+  /* Prevent mobile zooming */
+  body {
+    transform: none !important;
+    zoom: 0.8; /* Adjust between 0.75 - 0.9 if needed */
+    transform-origin: top center !important;
+  }
+
+  /* Keep warehouse cards in desktop grid */
+  .warehouses {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 20px !important;
+    justify-content: center !important;
+    align-items: start !important;
+  }
+
+  /* Buttons alignment */
+  button, .btn {
+    font-size: 16px !important;
+    padding: 12px 20px !important;
+  }
+
+  /* Fix Back button spacing */
+  .btn-back, button[onclick*="showSection"] {
+    margin-top: 25px !important;
+  }
+
+  /* Avoid overflow */
+  html, body {
+    overflow-x: hidden !important;
+  }
+}
+
 
 
     
@@ -1984,6 +2026,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
 </body>
 </html>
+
 
 
 
