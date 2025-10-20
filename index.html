@@ -1820,6 +1820,28 @@ function exportShopifyCSV(){
   #shopifySalesSection input[type="date"], #shopifySalesSection .btn { width: 100% !important; }
 }
 
+/* === FINAL FIX: Shopify button alignment override === */
+#shopifySalesSection .btn {
+  margin-top: 0 !important;      /* removes global 30px offset */
+  transform: none !important;    /* clears the var(--btn-nudge) shift */
+  position: relative !important;
+  top: 0 !important;
+  line-height: 40px !important;
+  height: 40px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  vertical-align: middle !important;
+}
+
+/* just to ensure both buttons share same baseline */
+#shopifyApply,
+#shopifyExport {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  top: 0 !important;
+}
+
 
 
 
@@ -1874,6 +1896,7 @@ function exportShopifyCSV(){
 
 </body>
 </html>
+
 
 
 
