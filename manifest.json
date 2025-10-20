@@ -5,6 +5,7 @@
   "display": "standalone",
   "background_color": "#1C39BB",
   "theme_color": "#1C39BB",
+  "description": "Byte Wellness PVT — Sales & Inventory Dashboard",
   "icons": [
     {
       "src": "icon-192.png",
