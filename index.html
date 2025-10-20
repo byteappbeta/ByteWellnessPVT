@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <style>
     body { font-family: 'Montserrat', sans-serif; margin:0; padding:0; background:#f5f7fa; color:#333; }
     header { background:#1C39BB; color:white; text-align:center; padding:30px; font-size:36px; font-weight:800; text-transform:uppercase; }
@@ -38,6 +38,42 @@
     .shopify { background:#96BF48; color:white; }
     .flipkart { background:#2874F0; color:white; }
     .blinkit { background:#F7E415; color:#333; }
+    @media (max-width: 768px) {
+  header {
+    font-size: 26px !important;
+    padding: 20px !important;
+  }
+
+  .card {
+    padding: 25px 20px !important;
+    font-size: 18px !important;
+  }
+
+  table {
+    font-size: 14px !important;
+  }
+
+  .filters {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  .filters input,
+  .filters .btn {
+    width: 90% !important;
+  }
+
+  .tables-container {
+    grid-template-columns: 1fr !important;
+  }
+
+  button.btn {
+    width: 90% !important;
+    margin: 12px auto !important;
+    display: block !important;
+  }
+}
+
   </style>
   <!-- PWA Meta for Splash Screen & Theme -->
 <link rel="manifest" href="manifest.json">
@@ -1930,11 +1966,23 @@ window.addEventListener('appinstalled', () => {
 });
 </script>
 
+  <script>
+// Enforce true 1:1 zoom on mobile (prevents Chrome's auto-fit)
+document.addEventListener("DOMContentLoaded", function() {
+  document.querySelector('meta[name="viewport"]').setAttribute(
+    "content",
+    "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  );
+});
+</script>
+
+
 
 
 
 </body>
 </html>
+
 
 
 
