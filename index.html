@@ -1674,6 +1674,56 @@ function exportShopifyCSV(){
     /* table corner polish */
     #shopifyTable thead th, #shopifySummary thead th { border-radius:8px 8px 0 0; }
     @media(max-width:900px){ .tables-container { grid-template-columns:1fr; } }
+
+    /* Info icon tooltip fix */
+.info-icon {
+  position: relative;
+  font-size: 12px;
+  margin-left: 6px;
+  cursor: help;
+  color: #1C39BB;
+}
+
+.info-icon:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.9);
+  color: #fff;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  z-index: 10000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+
+#shopifySummary td {
+  position: relative;  /* ensures tooltip positions correctly */
+  overflow: visible;   /* prevents clipping */
+}
+/* Fix white patch above blue header */
+#shopifyTable {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 0;
+}
+
+#shopifyTable thead th {
+  background: #1C39BB;       /* ensure full header color coverage */
+  color: #fff;
+  border-top: none;
+}
+
+#shopifySalesSection > div > table,
+#shopifySalesSection > div {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
   `;
   document.head.appendChild(style);
 })();
@@ -1703,6 +1753,7 @@ function exportShopifyCSV(){
 
 </body>
 </html>
+
 
 
 
