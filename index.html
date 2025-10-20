@@ -1742,76 +1742,43 @@ function exportShopifyCSV(){
       overflow: visible;
     }
 
-/* ====== SHOPIFY FILTER BAR: FORCE-ALIGN (FINAL) ====== */
-/* container - card look */
-#shopifySalesSection .filter-bar,
+/* FINAL MICRO-ALIGN FIX FOR SHOPIFY FILTER BAR */
+#shopifySalesSection .filters,
 #shopifySalesSection #shopifyFilterBar,
-#shopifySalesSection .filters {
+#shopifySalesSection .filter-bar {
+  /* ensure container is stable */
   display: flex !important;
   align-items: center !important;
   gap: 14px !important;
-  justify-content: center !important;
-  background: #fff !important;
-  box-shadow: 0 4px 18px rgba(2,6,23,0.06) !important;
-  border-radius: 12px !important;
   padding: 12px 18px !important;
-  margin: 18px auto 26px auto !important;
-  width: fit-content !important;
-  max-width: calc(100% - 40px) !important;
+  margin-bottom: 28px !important;
+  background: #fff !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 18px rgba(2,6,23,0.06) !important;
   box-sizing: border-box !important;
 }
 
-/* unify label + input group */
-#shopifySalesSection .date-group,
-#shopifySalesSection .filters .date-group {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  gap: 8px !important;
-  margin: 0 !important;
-}
-
-/* make label vertically centered by matching line-height to control height */
-#shopifySalesSection .date-group label {
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  color: #1C39BB !important;
-  line-height: 40px !important;       /* important: aligns label center */
-  min-width: 42px !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-/* FORCE identical box metrics for inputs and buttons */
+/* unify measurements */
 #shopifySalesSection input[type="date"],
-#shopifySalesSection .btn,
-#shopifySalesSection .apply-btn,
-#shopifySalesSection .export-btn {
+#shopifySalesSection .btn {
   height: 40px !important;
-  line-height: 40px !important;
   min-height: 40px !important;
+  line-height: 40px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
   font-size: 15px !important;
   border-radius: 8px !important;
   display: inline-flex !important;
   align-items: center !important;
-  justify-content: center !important;
-  padding: 0 14px !important;
   box-sizing: border-box !important;
   vertical-align: middle !important;
+  box-shadow: none !important; /* remove any inner shadows */
 }
 
-/* Reset the page-wide .btn padding/line-height that was overriding this */
-#shopifySalesSection .btn {
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  border: none !important;
-}
-
-/* make sure date input appearance is normalized */
+/* normalize date input chrome */
 #shopifySalesSection input[type="date"] {
   border: 1px solid #d0d6df !important;
   background: #fff !important;
-  color: #111 !important;
   padding-left: 10px !important;
   padding-right: 10px !important;
   appearance: none !important;
@@ -1819,29 +1786,40 @@ function exportShopifyCSV(){
   -moz-appearance: none !important;
 }
 
-/* webkit calendar placement micro-fix */
+/* ensure label sits centered with controls */
+#shopifySalesSection .date-group label {
+  display: inline-block !important;
+  line-height: 40px !important;
+  height: 40px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font-weight: 600 !important;
+  color: #1C39BB !important;
+}
+
+/* tiny visual nudge for buttons — adjust if needed */
+#shopifySalesSection { --btn-nudge: -1px; } /* default: raise buttons by 1px */
+#shopifySalesSection .btn {
+  transform: translateY(var(--btn-nudge)) !important;
+}
+
+/* remove any conflicting global .btn paddings (important specificity) */
+#shopifySalesSection .btn {
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+}
+
+/* webkit calendar icon micro-fix */
 #shopifySalesSection input[type="date"]::-webkit-calendar-picker-indicator {
   margin-left: 6px !important;
 }
 
-/* explicit button colors */
-#shopifySalesSection .btn.apply-btn { background: #1C39BB !important; color: #fff !important; }
-#shopifySalesSection .btn.export-btn { background: #0f915a !important; color: #fff !important; }
-
-/* hover */
-#shopifySalesSection .btn:hover { opacity: .95 !important; }
-
-/* responsive */
+/* responsive stack */
 @media (max-width: 720px) {
-  #shopifySalesSection .filters,
-  #shopifySalesSection .filter-bar {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 10px !important;
-  }
-  #shopifySalesSection input[type="date"],
-  #shopifySalesSection .btn { width: 100% !important; min-width: 0 !important; }
+  #shopifySalesSection .filters { flex-direction: column; align-items: stretch; gap: 10px; }
+  #shopifySalesSection input[type="date"], #shopifySalesSection .btn { width: 100% !important; }
 }
+
 
 
 
@@ -1896,6 +1874,7 @@ function exportShopifyCSV(){
 
 </body>
 </html>
+
 
 
 
