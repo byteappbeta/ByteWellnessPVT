@@ -1852,18 +1852,22 @@ function exportShopifyCSV(){
 </script>
 
   <script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/service-worker.js")
-        .then(reg => console.log("✅ Service Worker registered:", reg.scope))
-        .catch(err => console.error("❌ Service Worker failed:", err));
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      // Dynamically determine correct base path for GitHub Pages
+      const swPath = `${window.location.pathname.replace(/\/[^/]*$/, '/') }service-worker.js`;
+      navigator.serviceWorker.register(swPath)
+        .then(reg => console.log('✅ Service Worker registered:', reg.scope))
+        .catch(err => console.error('❌ Service Worker failed:', err));
     });
   }
 </script>
 
 
+
 </body>
 </html>
+
 
 
 
