@@ -171,25 +171,11 @@
     Shopify Sales
   </h2>
 
-<!-- Modern Filter Bar (fixed alignment) -->
-<div class="filter-bar" id="shopifyFilterBar">
-  <div class="date-group">
-    <label for="shopifyStart">From</label>
-    <input type="date" id="shopifyStart" />
-  </div>
-
-  <div class="date-group">
-    <label for="shopifyEnd">To</label>
-    <input type="date" id="shopifyEnd" />
-  </div>
-
-  <div class="button-group">
-    <button id="shopifyApply" class="btn apply-btn">Apply</button>
-    <button id="shopifyExport" class="btn export-btn">Export CSV</button>
-  </div>
+<div class="filters filter-bar" id="shopifyFilterBar">
+  From: <input type="date" id="shopifyStart"> To: <input type="date" id="shopifyEnd">
+  <button id="shopifyApply" class="btn apply-btn">Apply</button>
+  <button id="shopifyExport" class="btn export-btn">Export CSV</button>
 </div>
-
-
 
   <!-- Dual Tables -->
   <div class="tables-container" style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;margin-top:20px;">
@@ -1756,101 +1742,106 @@ function exportShopifyCSV(){
       overflow: visible;
     }
 
-/* ---- Filter bar container (card look) ---- */
-#shopifySalesSection #shopifyFilterBar {
-  display: flex;
-  align-items: center;          /* center all items vertically */
-  gap: 18px;
-  background: #fff;
-  box-shadow: 0 4px 18px rgba(2,6,23,0.06);
-  border-radius: 12px;
-  padding: 12px 18px;
-  margin: 18px auto 26px auto;
-  width: fit-content;
-  max-width: calc(100% - 40px);
+/* ====== SHOPIFY FILTER BAR: FORCE-ALIGN (FINAL) ====== */
+/* container - card look */
+#shopifySalesSection .filter-bar,
+#shopifySalesSection #shopifyFilterBar,
+#shopifySalesSection .filters {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  justify-content: center !important;
+  background: #fff !important;
+  box-shadow: 0 4px 18px rgba(2,6,23,0.06) !important;
+  border-radius: 12px !important;
+  padding: 12px 18px !important;
+  margin: 18px auto 26px auto !important;
+  width: fit-content !important;
+  max-width: calc(100% - 40px) !important;
+  box-sizing: border-box !important;
 }
 
-/* ---- Each date group: label + input inline and centered ---- */
-#shopifySalesSection .date-group {
-  display: flex;
-  flex-direction: row;          /* label beside input */
-  align-items: center;          /* vertically center label + input */
-  gap: 8px;
+/* unify label + input group */
+#shopifySalesSection .date-group,
+#shopifySalesSection .filters .date-group {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin: 0 !important;
 }
 
-/* label smaller, slightly blue to match theme */
+/* make label vertically centered by matching line-height to control height */
 #shopifySalesSection .date-group label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #1C39BB;
-  min-width: 42px;              /* aligns label widths for From/To */
-  text-align: left;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #1C39BB !important;
+  line-height: 40px !important;       /* important: aligns label center */
+  min-width: 42px !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
-/* unified date input look */
+/* FORCE identical box metrics for inputs and buttons */
+#shopifySalesSection input[type="date"],
+#shopifySalesSection .btn,
+#shopifySalesSection .apply-btn,
+#shopifySalesSection .export-btn {
+  height: 40px !important;
+  line-height: 40px !important;
+  min-height: 40px !important;
+  font-size: 15px !important;
+  border-radius: 8px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 14px !important;
+  box-sizing: border-box !important;
+  vertical-align: middle !important;
+}
+
+/* Reset the page-wide .btn padding/line-height that was overriding this */
+#shopifySalesSection .btn {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  border: none !important;
+}
+
+/* make sure date input appearance is normalized */
 #shopifySalesSection input[type="date"] {
-  height: 40px;
-  min-width: 150px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid #d0d6df;
-  background: #ffffff;
-  font-size: 14px;
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  appearance: none;
-  -webkit-appearance: none;
+  border: 1px solid #d0d6df !important;
+  background: #fff !important;
+  color: #111 !important;
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
 }
 
-/* adjust calendar icon placement for webkit */
+/* webkit calendar placement micro-fix */
 #shopifySalesSection input[type="date"]::-webkit-calendar-picker-indicator {
-  margin-left: 6px;
+  margin-left: 6px !important;
 }
 
-/* ---- Button group: keep inline and aligned ---- */
-#shopifySalesSection .button-group {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-/* unified button sizing to match date inputs */
-#shopifySalesSection .btn.apply-btn,
-#shopifySalesSection .btn.export-btn {
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 14px;
-  border: none;
-  cursor: pointer;
-}
-
-/* colors */
-#shopifySalesSection .btn.apply-btn { background: #1C39BB; color: #fff; }
-#shopifySalesSection .btn.export-btn { background: #0f915a; color: #fff; }
+/* explicit button colors */
+#shopifySalesSection .btn.apply-btn { background: #1C39BB !important; color: #fff !important; }
+#shopifySalesSection .btn.export-btn { background: #0f915a !important; color: #fff !important; }
 
 /* hover */
-#shopifySalesSection .btn:hover { opacity: 0.95; }
+#shopifySalesSection .btn:hover { opacity: .95 !important; }
 
-/* responsive: stack on small screens */
+/* responsive */
 @media (max-width: 720px) {
-  #shopifySalesSection #shopifyFilterBar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-    padding: 12px;
+  #shopifySalesSection .filters,
+  #shopifySalesSection .filter-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
   }
-  #shopifySalesSection .date-group { width: 100%; justify-content: flex-start; }
-  #shopifySalesSection input[type="date"] { width: 100%; min-width: 0; }
-  #shopifySalesSection .button-group { justify-content: flex-start; }
-  #shopifySalesSection .btn { width: 48%; }
+  #shopifySalesSection input[type="date"],
+  #shopifySalesSection .btn { width: 100% !important; min-width: 0 !important; }
 }
-
 
 
 
@@ -1905,6 +1896,7 @@ function exportShopifyCSV(){
 
 </body>
 </html>
+
 
 
 
