@@ -38,42 +38,44 @@
     .shopify { background:#96BF48; color:white; }
     .flipkart { background:#2874F0; color:white; }
     .blinkit { background:#F7E415; color:#333; }
-    @media (max-width: 768px) {
-  header {
-    font-size: 26px !important;
-    padding: 20px !important;
-  }
 
-  .card {
-    padding: 25px 20px !important;
-    font-size: 18px !important;
-  }
-
-  table {
-    font-size: 14px !important;
-  }
-
-  .filters {
-    flex-direction: column !important;
-    gap: 12px !important;
-  }
-
-  .filters input,
-  .filters .btn {
-    width: 90% !important;
-  }
-
-  .tables-container {
-    grid-template-columns: 1fr !important;
-  }
-
-  button.btn {
-    width: 90% !important;
-    margin: 12px auto !important;
-    display: block !important;
-  }
+/* ===== SMART ADAPTIVE DESKTOP LOOK ===== */
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background-color: #f8f9fb;
+  overflow-x: hidden;
 }
 
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* --- Dynamically scale desktop view for smaller screens --- */
+@media (max-width: 1600px) and (min-width: 1200px) {
+  body { transform: scale(0.95); transform-origin: top center; }
+}
+@media (max-width: 1200px) and (min-width: 992px) {
+  body { transform: scale(0.9); transform-origin: top center; }
+}
+@media (max-width: 992px) and (min-width: 768px) {
+  body { transform: scale(0.85); transform-origin: top center; }
+}
+@media (max-width: 768px) and (min-width: 600px) {
+  body { transform: scale(0.8); transform-origin: top center; }
+}
+@media (max-width: 600px) {
+  body { transform: scale(0.75); transform-origin: top center; }
+}
+body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+
+    
   </style>
   <!-- PWA Meta for Splash Screen & Theme -->
 <link rel="manifest" href="manifest.json">
@@ -1982,6 +1984,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
 </body>
 </html>
+
 
 
 
