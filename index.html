@@ -171,22 +171,24 @@
     Shopify Sales
   </h2>
 
- <!-- Date Filter + Buttons (Matched to Flipkart) -->
-<!-- Modern Filter Bar -->
-<div class="filter-bar">
+<!-- Modern Filter Bar (fixed alignment) -->
+<div class="filter-bar" id="shopifyFilterBar">
   <div class="date-group">
-    <label>From</label>
-    <input type="date" id="shopifyStart">
+    <label for="shopifyStart">From</label>
+    <input type="date" id="shopifyStart" />
   </div>
+
   <div class="date-group">
-    <label>To</label>
-    <input type="date" id="shopifyEnd">
+    <label for="shopifyEnd">To</label>
+    <input type="date" id="shopifyEnd" />
   </div>
+
   <div class="button-group">
     <button id="shopifyApply" class="btn apply-btn">Apply</button>
     <button id="shopifyExport" class="btn export-btn">Export CSV</button>
   </div>
 </div>
+
 
 
   <!-- Dual Tables -->
@@ -1754,72 +1756,101 @@ function exportShopifyCSV(){
       overflow: visible;
     }
 
-/* ===== MODERN FILTER BAR ===== */
-#shopifySalesSection .filter-bar {
+/* ---- Filter bar container (card look) ---- */
+#shopifySalesSection #shopifyFilterBar {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 16px;
+  align-items: center;          /* center all items vertically */
+  gap: 18px;
   background: #fff;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  box-shadow: 0 4px 18px rgba(2,6,23,0.06);
   border-radius: 12px;
-  padding: 14px 20px;
-  margin: 20px auto 30px auto;
+  padding: 12px 18px;
+  margin: 18px auto 26px auto;
   width: fit-content;
+  max-width: calc(100% - 40px);
 }
 
+/* ---- Each date group: label + input inline and centered ---- */
 #shopifySalesSection .date-group {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+  flex-direction: row;          /* label beside input */
+  align-items: center;          /* vertically center label + input */
+  gap: 8px;
 }
 
+/* label smaller, slightly blue to match theme */
 #shopifySalesSection .date-group label {
   font-size: 13px;
   font-weight: 600;
   color: #1C39BB;
+  min-width: 42px;              /* aligns label widths for From/To */
+  text-align: left;
 }
 
+/* unified date input look */
 #shopifySalesSection input[type="date"] {
-  height: 38px;
-  border: 1px solid #ccc;
+  height: 40px;
+  min-width: 150px;
+  padding: 6px 10px;
   border-radius: 6px;
-  padding: 0 10px;
-  font-size: 15px;
-  background: #f9fafb;
-  color: #333;
+  border: 1px solid #d0d6df;
+  background: #ffffff;
+  font-size: 14px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
+/* adjust calendar icon placement for webkit */
+#shopifySalesSection input[type="date"]::-webkit-calendar-picker-indicator {
+  margin-left: 6px;
+}
+
+/* ---- Button group: keep inline and aligned ---- */
 #shopifySalesSection .button-group {
   display: flex;
   gap: 10px;
+  align-items: center;
 }
 
-#shopifySalesSection .btn {
-  height: 38px;
-  border-radius: 6px;
-  padding: 0 18px;
-  font-weight: 600;
+/* unified button sizing to match date inputs */
+#shopifySalesSection .btn.apply-btn,
+#shopifySalesSection .btn.export-btn {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
   font-size: 14px;
-  cursor: pointer;
   border: none;
-  transition: 0.2s;
+  cursor: pointer;
 }
 
-#shopifySalesSection .apply-btn {
-  background: #1C39BB;
-  color: #fff;
+/* colors */
+#shopifySalesSection .btn.apply-btn { background: #1C39BB; color: #fff; }
+#shopifySalesSection .btn.export-btn { background: #0f915a; color: #fff; }
+
+/* hover */
+#shopifySalesSection .btn:hover { opacity: 0.95; }
+
+/* responsive: stack on small screens */
+@media (max-width: 720px) {
+  #shopifySalesSection #shopifyFilterBar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px;
+  }
+  #shopifySalesSection .date-group { width: 100%; justify-content: flex-start; }
+  #shopifySalesSection input[type="date"] { width: 100%; min-width: 0; }
+  #shopifySalesSection .button-group { justify-content: flex-start; }
+  #shopifySalesSection .btn { width: 48%; }
 }
 
-#shopifySalesSection .export-btn {
-  background: #0f915a;
-  color: #fff;
-}
-
-#shopifySalesSection .btn:hover {
-  opacity: 0.9;
-}
 
 
 
@@ -1874,6 +1905,7 @@ function exportShopifyCSV(){
 
 </body>
 </html>
+
 
 
 
