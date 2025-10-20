@@ -171,13 +171,10 @@
     Shopify Sales
   </h2>
 
-  <!-- Date Range Filter -->
-<!-- Date Range Filter -->
+ <!-- Date Filter + Buttons (Matched to Flipkart) -->
 <div class="filters">
-  <label for="shopifyStart">From:</label>
-  <input type="date" id="shopifyStart" />
-  <label for="shopifyEnd">To:</label>
-  <input type="date" id="shopifyEnd" />
+  From: <input type="date" id="shopifyStart">
+  To: <input type="date" id="shopifyEnd">
   <button id="shopifyApply" class="btn" style="background:#1C39BB;color:#fff;">Apply</button>
   <button id="shopifyExport" class="btn" style="background:#0f915a;color:#fff;">Export CSV</button>
 </div>
@@ -1746,22 +1743,22 @@ function exportShopifyCSV(){
       position: relative;
       overflow: visible;
     }
+
 /* ===== FILTER BAR SPACING & PERFECT ALIGNMENT ===== */
 #shopifySalesSection .filters {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   margin-top: 20px;
   margin-bottom: 24px;
   flex-wrap: wrap;
 }
 
-/* Inputs and buttons share same height and baseline */
 #shopifySalesSection input[type="date"],
 #shopifySalesSection .btn {
-  height: 42px;
-  line-height: 42px;
+  height: 38px;
+  line-height: 38px;
   font-size: 15px;
   border-radius: 6px;
   display: inline-flex;
@@ -1771,7 +1768,6 @@ function exportShopifyCSV(){
   vertical-align: middle;
 }
 
-/* Consistent date input reset across browsers */
 #shopifySalesSection input[type="date"] {
   border: 1px solid #ccc;
   background: #fff;
@@ -1783,7 +1779,6 @@ function exportShopifyCSV(){
   -moz-appearance: none;
 }
 
-/* Button style */
 #shopifySalesSection .btn {
   font-weight: 600;
   letter-spacing: 0.5px;
@@ -1792,6 +1787,7 @@ function exportShopifyCSV(){
   transition: 0.2s ease;
   padding: 0 18px;
 }
+
 #shopifySalesSection .btn:hover {
   opacity: 0.9;
 }
@@ -1848,6 +1844,7 @@ function exportShopifyCSV(){
 
 </body>
 </html>
+
 
 
 
