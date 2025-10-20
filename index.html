@@ -1362,96 +1362,341 @@ endDate.setHours(23, 59, 59, 999); // include the entire end day
     
 </script>
 
-<script>
-/* ====== SHOPIFY SALES SECTION ====== */
 
-const SHEET_ID = "REPLACE_WITH_YOUR_SPREADSHEET_ID"; // <-- set this
-<td style="text-align:right"><b>${formatIndian(tGross)}</b></td>
-<td style="text-align:right"><b>${formatIndian(tRto)}</b></td>
-</tr>`;
-}
+  
+  
+  
+  <script>
+  /* ====== SHOPIFY SALES SECTION ====== */
+    const SHEET_ID = "1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJk"; // <-- set this
+    const TAB_ORDERS = 'Orders_API';
+    const TAB_SHEET1 = 'Sheet1';
 
+    /***** Helpers *****/
+    function parseFlexibleDate(s){
+      if (!s && s !== 0) return null;
+      const str = String(s).trim();
+      if (!str) return null;
 
-function renderSummary(obj){
-const body = document.getElementById('summaryBody');
-const rows = [
-{k:'Total Orders', v:formatIndian(obj.totalOrders)},
-{k:'RTO', v:formatIndian(obj.rtoCount)},
-{k:'DELIVERED', v:formatIndian(obj.deliveredCount)},
-{k:'Pack of 2', v:formatIndian(obj.pack2)},
-{k:'Pack of 3', v:formatIndian(obj.pack3)},
-{k:'Shipping charges', v:formatIndian(obj.shippingCharges)},
-{k:'Discounts', v:formatIndian(obj.discounts)},
-{k:'Total Sales', v:formatIndian(obj.totalSales)},
-{k:'Refunds', v:formatIndian(obj.refunds)},
-{k:'Net Sales', v:formatIndian(obj.netSales)},
-];
-body.innerHTML = rows.map(r => `<tr><td class="label">${r.k}${(r.k==='Total Sales'? ' <span class="info" title="Gross + Shipping Charges - Discounts">i</span>':'')}${(r.k==='Net Sales'? ' <span class="info" title="Total Sales - Refunds">i</span>':'')}</td><td class="value">${r.v}</td></tr>`).join('');
-}
+      // dd-mm-yyyy or dd/mm/yyyy
+      let m = str.match(/^(\d{1,2})[-\/]?(\d{1,2})[-\/]?(\d{4})$/);
+      if (m){
+        const dd = Number(m[1]), mm = Number(m[2]), yyyy = Number(m[3]);
+        return new Date(yyyy, mm-1, dd);
+      }
 
+      // yyyy-mm-dd or ISO
+      m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if (m){
+        const yyyy = Number(m[1]), mm = Number(m[2]), dd = Number(m[3]);
+        return new Date(yyyy, mm-1, dd);
+      }
 
-function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+      // fallback to Date parser
+      const d = new Date(str);
+      return isNaN(d.getTime()) ? null : d;
+    }
 
+    function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x }
+    function endOfDay(d){ const x = new Date(d); x.setHours(23,59,59,999); return x }
 
-/***** CSV Export for Table 1 (includes totals row) *****/
-function exportCSV(){
-const t = document.getElementById('table1');
-const rows = [];
-// headers
-const headers = Array.from(t.querySelectorAll('thead th')).map(th=>th.innerText.trim());
-rows.push(headers);
-// body
-const trs = t.querySelectorAll('tbody tr');
-trs.forEach(tr=>{
-const cols = Array.from(tr.querySelectorAll('td')).map(td=>td.innerText.trim());
-rows.push(cols);
-});
-// footer
-const foot = t.querySelectorAll('tfoot tr');
-foot.forEach(tr=>{
-const cols = Array.from(tr.querySelectorAll('td')).map(td=>td.innerText.trim());
-rows.push(cols);
-});
+    function toNum(v){
+      if (v === null || v === undefined || v === '') return 0;
+      const s = String(v).replace(/,/g, '').trim();
+      const n = parseFloat(s);
+      return isNaN(n) ? 0 : n;
+    }
 
+    // Indian number format (no decimals)
+    function formatIndian(n){
+      n = Math.round(Number(n) || 0);
+      const s = String(Math.abs(n));
+      if (s.length <= 3) return (n<0?'-':'') + s;
+      const last3 = s.slice(-3);
+      let rest = s.slice(0, -3);
+      let out = '';
+      while (rest.length > 2){
+        out = ',' + rest.slice(-2) + out;
+        rest = rest.slice(0, -2);
+      }
+      if (rest) out = rest + out;
+      return (n<0?'-':'') + out + ',' + last3;
+    }
 
-const csv = rows.map(r => r.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
-const blob = new Blob([csv], {type:'text/csv'});
-const url = URL.createObjectURL(blob);
-const a = document.createElement('a'); a.href = url; a.download = 'shopify_sales.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-}
+    function showMessage(tbody, msg){
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:30px 0">${msg}</td></tr>`;
+    }
 
+    /***** Google Sheets fetch helpers *****/
+    async function fetchSheet(tab){
+      if (!API_KEY || API_KEY.includes('REPLACE')) throw new Error('Please set API_KEY in script');
+      if (!SHEET_ID || SHEET_ID.includes('REPLACE')) throw new Error('Please set SHEET_ID in script');
+      const range = encodeURIComponent(tab + '!A1:Z');
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?key=${API_KEY}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed fetching ' + tab + ': ' + res.status + ' ' + res.statusText);
+      const json = await res.json();
+      return json.values || [];
+    }
 
-/***** Init UI and events *****/
-function setYesterdayInputs(){
-const d = new Date(); d.setDate(d.getDate()-1);
-const dd = String(d.getDate()).padStart(2,'0');
-const mm = String(d.getMonth()+1).padStart(2,'0');
-const yyyy = d.getFullYear();
-const val = `${dd}-${mm}-${yyyy}`;
-document.getElementById('startDate').value = val;
-document.getElementById('endDate').value = val;
-}
+    function headersToIndex(headers){
+      const map = {};
+      headers.forEach((h,i)=>{ if(h) map[String(h).trim().toLowerCase()] = i });
+      return map;
+    }
 
+    /***** Core processing (per your specification) *****/
+    async function loadData(){
+      try{
+        const startVal = document.getElementById('startDate').value.trim();
+        const endVal = document.getElementById('endDate').value.trim();
+        if (!startVal || !endVal) return alert('Please enter start and end dates in dd-mm-yyyy');
+        const sParsed = parseFlexibleDate(startVal);
+        const eParsed = parseFlexibleDate(endVal);
+        if (!sParsed || !eParsed) return alert('Unable to parse dates. Use dd-mm-yyyy or yyyy-mm-dd');
+        const start = startOfDay(sParsed);
+        const end = endOfDay(eParsed);
 
-document.getElementById('applyBtn').addEventListener('click', loadData);
-document.getElementById('exportBtn').addEventListener('click', exportCSV);
+        // show loading in table1
+        const t1 = document.getElementById('table1');
+        const tbody1 = t1.querySelector('tbody');
+        showMessage(tbody1, 'Fetching Shopify data...');
 
+        // fetch both tabs in parallel
+        const [ordersVals, sheet1Vals] = await Promise.all([fetchSheet(TAB_ORDERS), fetchSheet(TAB_SHEET1)]);
 
-// Back button simply goes to '#' for now; you can change to your overview route
-document.getElementById('backBtn').addEventListener('click', function(e){ e.preventDefault(); window.location.href = '/'; });
+        // build header indices
+        if (!ordersVals.length) { showMessage(tbody1, 'Orders_API sheet is empty'); return }
+        if (!sheet1Vals.length) { showMessage(tbody1, 'Sheet1 is empty'); return }
 
+        const ordersHdr = ordersVals[0].map(c => (c||'').toString().trim());
+        const sheet1Hdr = sheet1Vals[0].map(c => (c||'').toString().trim());
+        const oIdx = headersToIndex(ordersHdr);
+        const sIdx = headersToIndex(sheet1Hdr);
 
-// auto-load yesterday on page load
-(function(){
-setYesterdayInputs();
-// small delay so UI appears before fetch
-setTimeout(()=>{ try{ loadData(); }catch(e){ console.warn(e) } }, 150);
-})();
+        // Required columns checks (best-effort)
+        // Orders_API: SKU, Qty, Price (per unit), Date, Order Number, Discount Application, Shipping charges, Discounts
+        // Sheet1: Master SKU, Product Quantity, RTO Initiated Date, Order ID, Order Total, Order Delivered Date
+
+        // Process Orders_API for Table 1 (SKU, Qty, Gross) and Table 2 (total orders, packs, shipping, discounts)
+        const skuMap = new Map(); // sku -> {qty, gross}
+        const ordersSet = new Set(); // unique order numbers
+        let pack2 = 0, pack3 = 0, shippingCharges = 0, discounts = 0;
+
+        for (let i=1;i<ordersVals.length;i++){
+          const row = ordersVals[i];
+          const dateVal = row[oIdx['date']] || row[oIdx['date ']] || '';
+          const parsed = parseFlexibleDate(dateVal);
+          if (!parsed) continue;
+          if (parsed < start || parsed > end) continue;
+
+          const sku = (row[oIdx['sku']] || '').toString().trim();
+          const qty = toNum(row[oIdx['qty']] || row[oIdx['quantity']] || row[oIdx['qty ']]);
+          const price = toNum(row[oIdx['price (per unit)']] || row[oIdx['price per unit']] || row[oIdx['price']] || 0);
+          const orderNum = (row[oIdx['order number']] || row[oIdx['order number ']] || '').toString().trim();
+          const discApp = (row[oIdx['discount application']] || '').toString().trim();
+          const shipCh = toNum(row[oIdx['shipping charges']] || row[oIdx['shipping']] || 0);
+          const disc = toNum(row[oIdx['discounts']] || row[oIdx['discount']] || 0);
+
+          // aggregate SKU
+          if (sku){
+            const key = sku.trim().toUpperCase();
+            if (!skuMap.has(key)) skuMap.set(key, {sku: sku, qty:0, gross:0});
+            const rec = skuMap.get(key);
+            rec.qty += qty;
+            rec.gross += qty * price;
+          }
+
+          // packs
+          if (discApp === 'Pack of 2') pack2 += 1;
+          if (discApp === 'Pack of 3') pack3 += 1;
+
+          // shipping & discounts
+          shippingCharges += shipCh;
+          discounts += disc;
+
+          // orders
+          if (orderNum) ordersSet.add(orderNum);
+        }
+
+        // Process Sheet1 for RTO units, RTO counts, Refunds, Delivered
+        const rtoUnitsMap = new Map(); // masterSKU -> units
+        const rtoOrderSet = new Set(); // unique order ids for RTO
+        const refundOrderMap = new Map(); // orderId -> orderTotal (first non-empty)
+        const deliveredOrderSet = new Set();
+
+        for (let i=1;i<sheet1Vals.length;i++){
+          const row = sheet1Vals[i];
+
+          // RTO initiated date
+          const rtoDateVal = row[sIdx['rto initiated date']] || row[sIdx['rto initiated date ']] || '';
+          const rtoDate = parseFlexibleDate(rtoDateVal);
+          if (rtoDate && rtoDate >= start && rtoDate <= end){
+            const masterSku = (row[sIdx['master sku']] || '').toString().trim();
+            const prodQty = toNum(row[sIdx['product quantity']] || row[sIdx['product quantity ']]);
+            const orderId = (row[sIdx['order id']] || row[sIdx['order id ']] || '').toString().trim();
+            const orderTotal = toNum(row[sIdx['order total']] || row[sIdx['order total ']]);
+
+            if (masterSku){
+              const key = masterSku.trim().toUpperCase();
+              rtoUnitsMap.set(key, (rtoUnitsMap.get(key) || 0) + prodQty);
+            }
+
+            if (orderId){
+              rtoOrderSet.add(orderId);
+              if (!refundOrderMap.has(orderId) && orderTotal) refundOrderMap.set(orderId, orderTotal);
+            }
+          }
+
+          // Delivered date
+          const delDateVal = row[sIdx['order delivered date']] || '';
+          const delDate = parseFlexibleDate(delDateVal);
+          if (delDate && delDate >= start && delDate <= end){
+            const orderId2 = (row[sIdx['order id']] || row[sIdx['order id ']] || '').toString().trim();
+            if (orderId2) deliveredOrderSet.add(orderId2);
+          }
+        }
+
+        // Build combined rows for Table 1: union of skuMap keys and rtoUnitsMap keys
+        const allKeys = new Set([...skuMap.keys(), ...rtoUnitsMap.keys()]);
+        const tableRows = [];
+        let totalQty=0, totalGross=0, totalRto=0;
+        for (const key of allKeys){
+          const skuLabel = skuMap.has(key) ? skuMap.get(key).sku : key;
+          const qty = skuMap.has(key) ? skuMap.get(key).qty : 0;
+          const gross = skuMap.has(key) ? skuMap.get(key).gross : 0;
+          const rtoUnits = rtoUnitsMap.get(key) || 0;
+          tableRows.push({sku: skuLabel, qty, gross, rtoUnits});
+          totalQty += qty; totalGross += gross; totalRto += rtoUnits;
+        }
+
+        // render Table 1
+        renderTable1(tableRows, totalQty, totalGross, totalRto);
+
+        // compute Table 2 values
+        const totalOrders = ordersSet.size;
+        const rtoCount = rtoOrderSet.size;
+        const deliveredCount = deliveredOrderSet.size;
+        const refunds = Array.from(refundOrderMap.values()).reduce((a,b)=>a+b,0);
+        const totalSales = totalGross + shippingCharges - discounts;
+        const netSales = totalSales - refunds;
+
+        renderSummary({totalOrders, rtoCount, deliveredCount, pack2, pack3, shippingCharges, discounts, totalSales, refunds, netSales});
+
+      }catch(err){
+        console.error(err);
+        const t1 = document.getElementById('table1');
+        showMessage(t1.querySelector('tbody'), 'Error loading data: ' + err.message);
+        alert('Error: ' + err.message);
+      }
+    }
+
+    /***** Rendering helpers *****/
+    function renderTable1(rows, tQty, tGross, tRto){
+      const t = document.getElementById('table1');
+      const tbody = t.querySelector('tbody');
+      const tfoot = t.querySelector('tfoot');
+      if (!rows.length){
+        showMessage(tbody, 'No data for this range.');
+        tfoot.innerHTML = '';
+        return;
+      }
+
+      tbody.innerHTML = rows.map(r => `
+        <tr>
+          <td>${escapeHtml(r.sku)}</td>
+          <td style="text-align:right">${formatIndian(r.qty)}</td>
+          <td style="text-align:right">${formatIndian(r.gross)}</td>
+          <td style="text-align:right">${formatIndian(r.rtoUnits)}</td>
+        </tr>
+      `).join('');
+
+      tfoot.innerHTML = `<tr>
+        <td><b>TOTAL</b></td>
+        <td style="text-align:right"><b>${formatIndian(tQty)}</b></td>
+        <td style="text-align:right"><b>${formatIndian(tGross)}</b></td>
+        <td style="text-align:right"><b>${formatIndian(tRto)}</b></td>
+      </tr>`;
+    }
+
+    function renderSummary(obj){
+      const body = document.getElementById('summaryBody');
+      const rows = [
+        {k:'Total Orders', v:formatIndian(obj.totalOrders)},
+        {k:'RTO', v:formatIndian(obj.rtoCount)},
+        {k:'DELIVERED', v:formatIndian(obj.deliveredCount)},
+        {k:'Pack of 2', v:formatIndian(obj.pack2)},
+        {k:'Pack of 3', v:formatIndian(obj.pack3)},
+        {k:'Shipping charges', v:formatIndian(obj.shippingCharges)},
+        {k:'Discounts', v:formatIndian(obj.discounts)},
+        {k:'Total Sales', v:formatIndian(obj.totalSales)},
+        {k:'Refunds', v:formatIndian(obj.refunds)},
+        {k:'Net Sales', v:formatIndian(obj.netSales)},
+      ];
+      body.innerHTML = rows.map(r => `<tr><td class="label">${r.k}${(r.k==='Total Sales'? ' <span class="info" title="Gross + Shipping Charges - Discounts">i</span>':'')}${(r.k==='Net Sales'? ' <span class="info" title="Total Sales - Refunds">i</span>':'')}</td><td class="value">${r.v}</td></tr>`).join('');
+    }
+
+    function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+    /***** CSV Export for Table 1 (includes totals row) *****/
+    function exportCSV(){
+      const t = document.getElementById('table1');
+      const rows = [];
+      // headers
+      const headers = Array.from(t.querySelectorAll('thead th')).map(th=>th.innerText.trim());
+      rows.push(headers);
+      // body
+      const trs = t.querySelectorAll('tbody tr');
+      trs.forEach(tr=>{
+        const cols = Array.from(tr.querySelectorAll('td')).map(td=>td.innerText.trim());
+        rows.push(cols);
+      });
+      // footer
+      const foot = t.querySelectorAll('tfoot tr');
+      foot.forEach(tr=>{
+        const cols = Array.from(tr.querySelectorAll('td')).map(td=>td.innerText.trim());
+        rows.push(cols);
+      });
+
+      const csv = rows.map(r => r.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+      const blob = new Blob([csv], {type:'text/csv'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'shopify_sales.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    }
+
+    /***** Init UI and events *****/
+    function setYesterdayInputs(){
+      const d = new Date(); d.setDate(d.getDate()-1);
+      const dd = String(d.getDate()).padStart(2,'0');
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const yyyy = d.getFullYear();
+      const val = `${dd}-${mm}-${yyyy}`;
+      document.getElementById('startDate').value = val;
+      document.getElementById('endDate').value = val;
+    }
+
+    document.getElementById('applyBtn').addEventListener('click', loadData);
+    document.getElementById('exportBtn').addEventListener('click', exportCSV);
+
+    // Back button simply goes to '#' for now; you can change to your overview route
+    document.getElementById('backBtn').addEventListener('click', function(e){ e.preventDefault(); window.location.href = '/'; });
+
+    // auto-load yesterday on page load
+    (function(){
+      setYesterdayInputs();
+      // small delay so UI appears before fetch
+      setTimeout(()=>{ try{ loadData(); }catch(e){ console.warn(e) } }, 150);
+    })();
+  </script>
+</body>
+</html>
+
 </script>
 
 
 </body>
 </html>
+
 
 
 
