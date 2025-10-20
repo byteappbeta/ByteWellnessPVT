@@ -166,26 +166,69 @@
 
   <!-- START: Shopify Sales Section (standalone paste) -->
 <div id="shopifySalesSection" class="container hidden">
-  <h2 style="font-weight:700; text-align:center; margin-top:20px; color:#1C39BB; text-transform:uppercase;">
-    Shopify Sales
-  </h2>
+  <div class="container">
+<h1>SHOPIFY SALES</h1>
+    
+<div class="controls">
+<label>From:</label>
+<input id="startDate" class="date-input" type="text" placeholder="dd-mm-yyyy" />
+<label>To:</label>
+<input id="endDate" class="date-input" type="text" placeholder="dd-mm-yyyy" />
+<button id="applyBtn" class="btn btn-apply">APPLY</button>
+<button id="exportBtn" class="btn btn-export">EXPORT CSV</button>
+</div>
 
-  <!-- Date Range Filter -->
-  <div class="filters">
-    From: <input type="date" id="shopifyStart">
-    To: <input type="date" id="shopifyEnd">
-    <button id="shopifyApply" class="btn">Apply</button>
-    <button id="shopifyExport" class="btn" style="background:#0f915a;">Export CSV</button>
-  </div>
 
-  <!-- Table -->
-  <table id="shopifyTable">
-    <thead></thead>
-    <tbody></tbody>
-    <tfoot></tfoot>
-  </table>
+<div class="grid">
+<!-- Table 1 card -->
+<div class="card">
+<table class="table" id="table1">
+<thead>
+<tr>
+<th>SKU</th>
+<th style="text-align:right">QTY</th>
+<th style="text-align:right">GROSS</th>
+<th style="text-align:right">RTO UNITS</th>
+</tr>
+</thead>
+<tbody>
+<tr><td colspan="4" style="text-align:center;padding:30px 0;">No data. Click Apply to fetch.</td></tr>
+</tbody>
+<tfoot>
+</tfoot>
+</table>
+</div>
 
-  <button class="btn" onclick="showSection('salesOverview')">Back to Overview</button>
+
+<!-- Summary card -->
+<div class="card" style="padding:0;">
+<table class="summary" style="width:100%">
+<thead>
+<tr><th colspan="2">Summary</th></tr>
+</thead>
+<tbody id="summaryBody">
+<tr><td class="label">Total Orders</td><td class="value">-</td></tr>
+<tr><td class="label">RTO</td><td class="value">-</td></tr>
+<tr><td class="label">DELIVERED</td><td class="value">-</td></tr>
+<tr><td class="label">Pack of 2</td><td class="value">-</td></tr>
+<tr><td class="label">Pack of 3</td><td class="value">-</td></tr>
+<tr><td class="label">Shipping charges</td><td class="value">-</td></tr>
+<tr><td class="label">Discounts</td><td class="value">-</td></tr>
+<tr><td class="label">Total Sales <span class="info" title="Gross + Shipping Charges - Discounts">i</span></td><td class="value">-</td></tr>
+<tr><td class="label">Refunds</td><td class="value">-</td></tr>
+<tr><td class="label">Net Sales <span class="info" title="Total Sales - Refunds">i</span></td><td class="value">-</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+<div style="text-align:left">
+<a id="backBtn" class="btn btn-back" href="#">BACK TO OVERVIEW</a>
+</div>
+
+
+<p class="muted-note">Ensure you set <code>API_KEY</code> and <code>SHEET_ID</code> in the script.</p>
 </div>
 
 
@@ -1322,247 +1365,94 @@ endDate.setHours(23, 59, 59, 999); // include the entire end day
 <script>
 /* ====== SHOPIFY SALES SECTION ====== */
 
-const SHOPIFY_SHEET_ID = "1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJk";
-const SHOPIFY_SHEET_TAB = "Sheet1";
-
-/* --- Helpers --- */
-function parseShopifyDate(val) {
-  if (!val) return null;
-  const s = String(val).trim();
-
-  // ✅ handles dd/mm/yyyy like 14/10/2025
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
-    const [dd, mm, yyyy] = s.split("/");
-    return new Date(Number(yyyy), Number(mm) - 1, Number(dd));
-  }
-
-  // fallback for yyyy-mm-dd
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-    const [yyyy, mm, dd] = s.substring(0, 10).split("-");
-    return new Date(Number(yyyy), Number(mm) - 1, Number(dd));
-  }
-
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
+const SHEET_ID = "REPLACE_WITH_YOUR_SPREADSHEET_ID"; // <-- set this
+<td style="text-align:right"><b>${formatIndian(tGross)}</b></td>
+<td style="text-align:right"><b>${formatIndian(tRto)}</b></td>
+</tr>`;
 }
 
 
-function toNum(n) {
-  const x = parseFloat(String(n || "").replace(/,/g, ""));
-  return isNaN(x) ? 0 : x;
+function renderSummary(obj){
+const body = document.getElementById('summaryBody');
+const rows = [
+{k:'Total Orders', v:formatIndian(obj.totalOrders)},
+{k:'RTO', v:formatIndian(obj.rtoCount)},
+{k:'DELIVERED', v:formatIndian(obj.deliveredCount)},
+{k:'Pack of 2', v:formatIndian(obj.pack2)},
+{k:'Pack of 3', v:formatIndian(obj.pack3)},
+{k:'Shipping charges', v:formatIndian(obj.shippingCharges)},
+{k:'Discounts', v:formatIndian(obj.discounts)},
+{k:'Total Sales', v:formatIndian(obj.totalSales)},
+{k:'Refunds', v:formatIndian(obj.refunds)},
+{k:'Net Sales', v:formatIndian(obj.netSales)},
+];
+body.innerHTML = rows.map(r => `<tr><td class="label">${r.k}${(r.k==='Total Sales'? ' <span class="info" title="Gross + Shipping Charges - Discounts">i</span>':'')}${(r.k==='Net Sales'? ' <span class="info" title="Total Sales - Refunds">i</span>':'')}</td><td class="value">${r.v}</td></tr>`).join('');
 }
 
-/* --- Fetch Data --- */
-async function fetchShopifyValues() {
-  const range = `${encodeURIComponent(SHOPIFY_SHEET_TAB)}!A1:Z`;
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHOPIFY_SHEET_ID}/values/${range}?key=${API_KEY}`;
-  const res = await fetch(url);
-  const json = await res.json();
-  return json.values || [];
+
+function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+
+/***** CSV Export for Table 1 (includes totals row) *****/
+function exportCSV(){
+const t = document.getElementById('table1');
+const rows = [];
+// headers
+const headers = Array.from(t.querySelectorAll('thead th')).map(th=>th.innerText.trim());
+rows.push(headers);
+// body
+const trs = t.querySelectorAll('tbody tr');
+trs.forEach(tr=>{
+const cols = Array.from(tr.querySelectorAll('td')).map(td=>td.innerText.trim());
+rows.push(cols);
+});
+// footer
+const foot = t.querySelectorAll('tfoot tr');
+foot.forEach(tr=>{
+const cols = Array.from(tr.querySelectorAll('td')).map(td=>td.innerText.trim());
+rows.push(cols);
+});
+
+
+const csv = rows.map(r => r.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+const blob = new Blob([csv], {type:'text/csv'});
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a'); a.href = url; a.download = 'shopify_sales.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
 }
 
-/* --- Group Data by Order ID --- */
-function processShopifyData(values, startDate, endDate) {
-  if (!values || values.length < 2) return [];
 
-  const headers = values[0].map(h => (h || "").toString().trim().toLowerCase());
-  const idxOrderId = headers.indexOf("order id");
-  const idxCreated = headers.indexOf("shiprocket created at");
-  const idxSku = headers.indexOf("master sku");
-  const idxQty = headers.indexOf("product quantity");
-  const idxTotal = headers.indexOf("order total");
-  const idxRto = headers.indexOf("rto initiated date");
-
-  const orderMap = new Map();
-  const rtoMap = new Map();
-
-  for (let i = 1; i < values.length; i++) {
-    const row = values[i];
-    const orderId = (row[idxOrderId] || "").trim();
-    const sku = (row[idxSku] || "").trim();
-    const qty = toNum(row[idxQty]);
-    const total = toNum(row[idxTotal]);
-    const createdAt = parseShopifyDate(row[idxCreated]);
-    const rtoDate = parseShopifyDate(row[idxRto]);
-
-    if (!orderId || !sku) continue;
-
-    // ---- Gross & Qty by Created At ----
-    if (createdAt && (!startDate || createdAt >= startDate) && (!endDate || createdAt <= endDate)) {
-      if (!orderMap.has(orderId)) orderMap.set(orderId, { skus: [], total });
-      orderMap.get(orderId).skus.push({ sku, qty });
-    }
-
-    // ---- RTO & Refunds by RTO Initiated Date ----
-    if (rtoDate && (!startDate || rtoDate >= startDate) && (!endDate || rtoDate <= endDate)) {
-      if (!rtoMap.has(orderId)) rtoMap.set(orderId, { skus: [], total });
-      rtoMap.get(orderId).skus.push({ sku, qty });
-      rtoMap.get(orderId).total = total;
-    }
-  }
-
-  // ---- Combine by SKU/Combo ----
-  const combined = new Map();
-
-  // Regular (Gross/Qty)
-  for (const [orderId, obj] of orderMap.entries()) {
-    const isCombo = obj.skus.length > 1;
-    const skuName = isCombo
-      ? obj.skus.map(s => s.sku).join("+")
-      : obj.skus[0].sku;
-
-    const qtyStr = isCombo
-      ? obj.skus.map(s => s.qty).join("+")
-      : obj.skus[0].qty.toString();
-
-    if (!combined.has(skuName))
-      combined.set(skuName, { sku: skuName, qty: 0, gross: 0, rto: 0, refunds: 0 });
-
-    const rec = combined.get(skuName);
-    rec.gross += obj.total;
-    rec.qty += isCombo ? 1 : obj.skus[0].qty;
-    rec.qtyStr = isCombo ? qtyStr : rec.qty.toString();
-  }
-
-  // RTO/Refunds
-  for (const [orderId, obj] of rtoMap.entries()) {
-    const isCombo = obj.skus.length > 1;
-    const skuName = isCombo
-      ? obj.skus.map(s => s.sku).join("+")
-      : obj.skus[0].sku;
-
-    if (!combined.has(skuName))
-      combined.set(skuName, { sku: skuName, qty: 0, gross: 0, rto: 0, refunds: 0 });
-
-    const rec = combined.get(skuName);
-    rec.rto += isCombo ? 1 : obj.skus[0].qty;
-    rec.refunds += obj.total;
-  }
-
-  return Array.from(combined.values());
+/***** Init UI and events *****/
+function setYesterdayInputs(){
+const d = new Date(); d.setDate(d.getDate()-1);
+const dd = String(d.getDate()).padStart(2,'0');
+const mm = String(d.getMonth()+1).padStart(2,'0');
+const yyyy = d.getFullYear();
+const val = `${dd}-${mm}-${yyyy}`;
+document.getElementById('startDate').value = val;
+document.getElementById('endDate').value = val;
 }
 
-/* --- Render Table --- */
-function renderShopifyTable(rows) {
-  const tbl = document.getElementById("shopifyTable");
-  const thead = tbl.querySelector("thead");
-  const tbody = tbl.querySelector("tbody");
-  const tfoot = tbl.querySelector("tfoot");
 
-  thead.innerHTML = `
-    <tr>
-      <th>SKU</th>
-      <th>Qty</th>
-      <th>Gross</th>
-      <th>RTO</th>
-      <th>Refunds</th>
-    </tr>
-  `;
+document.getElementById('applyBtn').addEventListener('click', loadData);
+document.getElementById('exportBtn').addEventListener('click', exportCSV);
 
-  if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No data for this range.</td></tr>`;
-    tfoot.innerHTML = "";
-    return;
-  }
 
-  let totalQty = 0,
-    totalGross = 0,
-    totalRTO = 0,
-    totalRefunds = 0;
+// Back button simply goes to '#' for now; you can change to your overview route
+document.getElementById('backBtn').addEventListener('click', function(e){ e.preventDefault(); window.location.href = '/'; });
 
-  tbody.innerHTML = rows
-    .map(r => {
-      totalQty += r.qty;
-      totalGross += r.gross;
-      totalRTO += r.rto;
-      totalRefunds += r.refunds;
 
-      return `
-        <tr>
-          <td>${r.sku}</td>
-          <td>${r.qtyStr || r.qty}</td>
-          <td>${r.gross.toFixed(0)}</td>
-          <td>${r.rto}</td>
-          <td>${r.refunds.toFixed(0)}</td>
-        </tr>
-      `;
-    })
-    .join("");
-
-  tfoot.innerHTML = `
-    <tr>
-      <td><b>TOTAL</b></td>
-      <td><b>${totalQty}</b></td>
-      <td><b>${totalGross.toFixed(0)}</b></td>
-      <td><b>${totalRTO}</b></td>
-      <td><b>${totalRefunds.toFixed(0)}</b></td>
-    </tr>
-  `;
-}
-
-/* --- Export CSV --- */
-function exportShopifyCSV() {
-  const table = document.getElementById("shopifyTable");
-  let csv = "";
-  table.querySelectorAll("tr").forEach(tr => {
-    const cols = tr.querySelectorAll("th,td");
-    const line = Array.from(cols)
-      .map(td => `"${td.innerText.replace(/"/g, '""')}"`)
-      .join(",");
-    csv += line + "\n";
-  });
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "shopify_sales.csv";
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-/* --- Load Data --- */
-async function loadShopifySales() {
-  const startVal = document.getElementById("shopifyStart").value;
-  const endVal = document.getElementById("shopifyEnd").value;
-  if (!startVal || !endVal) return alert("Please select a valid date range.");
-
-  const start = new Date(startVal);
-  const end = new Date(endVal);
-  end.setHours(23, 59, 59, 999);
-
-  const tbl = document.getElementById("shopifyTable").querySelector("tbody");
-  tbl.innerHTML = `<tr><td colspan="5" style="text-align:center;">Fetching Shopify data...</td></tr>`;
-
-  const values = await fetchShopifyValues();
-  const rows = processShopifyData(values, start, end);
-  renderShopifyTable(rows);
-}
-
-/* --- Initialize --- */
-(function initShopifyUI() {
-  const applyBtn = document.getElementById("shopifyApply");
-  const exportBtn = document.getElementById("shopifyExport");
-  if (!applyBtn) return;
-
-  // Default yesterday
-  const today = new Date();
-  const y = new Date(today);
-  y.setDate(today.getDate() - 1);
-  const yStr = y.toISOString().slice(0, 10);
-  document.getElementById("shopifyStart").value = yStr;
-  document.getElementById("shopifyEnd").value = yStr;
-
-  applyBtn.addEventListener("click", loadShopifySales);
-  exportBtn.addEventListener("click", exportShopifyCSV);
-
-  // Auto-load yesterday
-  loadShopifySales();
+// auto-load yesterday on page load
+(function(){
+setYesterdayInputs();
+// small delay so UI appears before fetch
+setTimeout(()=>{ try{ loadData(); }catch(e){ console.warn(e) } }, 150);
 })();
 </script>
 
 
 </body>
 </html>
+
 
 
 
