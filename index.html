@@ -1643,7 +1643,6 @@ function exportShopifyCSV(){
   }
 })();
 
-/* --- Inject CSS fixes for alignment + black summary header + tooltip --- */
 (function injectShopifyStyles(){
   const style = document.createElement('style');
   style.textContent = `
@@ -1742,85 +1741,39 @@ function exportShopifyCSV(){
       overflow: visible;
     }
 
-/* FINAL MICRO-ALIGN FIX FOR SHOPIFY FILTER BAR */
-#shopifySalesSection .filters,
-#shopifySalesSection #shopifyFilterBar,
-#shopifySalesSection .filter-bar {
-  /* ensure container is stable */
-  display: flex !important;
-  align-items: center !important;
-  gap: 14px !important;
-  padding: 12px 18px !important;
-  margin-bottom: 28px !important;
-  background: #fff !important;
-  border-radius: 12px !important;
-  box-shadow: 0 4px 18px rgba(2,6,23,0.06) !important;
-  box-sizing: border-box !important;
-}
+    /* ===== FILTER BAR SPACING & ALIGNMENT ===== */
+    #shopifySalesSection .filters {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      margin-top: 20px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    #shopifySalesSection input[type="date"],
+    #shopifySalesSection .btn {
+      height: 38px;
+      line-height: 38px;
+      padding: 0 14px;
+      font-size: 15px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+    #shopifySalesSection input[type="date"] {
+      border: 1px solid #ccc;
+      background: #fff;
+    }
+    #shopifySalesSection .btn {
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      border: none;
+    }
 
-/* unify measurements */
-#shopifySalesSection input[type="date"],
-#shopifySalesSection .btn {
-  height: 40px !important;
-  min-height: 40px !important;
-  line-height: 40px !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  font-size: 15px !important;
-  border-radius: 8px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  box-sizing: border-box !important;
-  vertical-align: middle !important;
-  box-shadow: none !important; /* remove any inner shadows */
-}
-
-/* normalize date input chrome */
-#shopifySalesSection input[type="date"] {
-  border: 1px solid #d0d6df !important;
-  background: #fff !important;
-  padding-left: 10px !important;
-  padding-right: 10px !important;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  -moz-appearance: none !important;
-}
-
-/* ensure label sits centered with controls */
-#shopifySalesSection .date-group label {
-  display: inline-block !important;
-  line-height: 40px !important;
-  height: 40px !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  font-weight: 600 !important;
-  color: #1C39BB !important;
-}
-
-/* tiny visual nudge for buttons — adjust if needed */
-#shopifySalesSection { --btn-nudge: -1px; } /* default: raise buttons by 1px */
-#shopifySalesSection .btn {
-  transform: translateY(var(--btn-nudge)) !important;
-}
-
-/* remove any conflicting global .btn paddings (important specificity) */
-#shopifySalesSection .btn {
-  padding-left: 16px !important;
-  padding-right: 16px !important;
-}
-
-/* webkit calendar icon micro-fix */
-#shopifySalesSection input[type="date"]::-webkit-calendar-picker-indicator {
-  margin-left: 6px !important;
-}
-
-/* responsive stack */
-@media (max-width: 720px) {
-  #shopifySalesSection .filters { flex-direction: column; align-items: stretch; gap: 10px; }
-  #shopifySalesSection input[type="date"], #shopifySalesSection .btn { width: 100% !important; }
-}
-
-/* === FINAL FIX: Shopify button alignment override === */
+    /* === FINAL FIX: Shopify button alignment override === */
 #shopifySalesSection .btn {
   margin-top: 0 !important;      /* removes global 30px offset */
   transform: none !important;    /* clears the var(--btn-nudge) shift */
@@ -1841,8 +1794,6 @@ function exportShopifyCSV(){
   margin-bottom: 0 !important;
   top: 0 !important;
 }
-
-
 
 
     /* ===== TABLES CONTAINER SPACING ===== */
@@ -1869,8 +1820,6 @@ function exportShopifyCSV(){
   document.head.appendChild(style);
 })();
 
-
-
 /* Auto-load yesterday (safe) */
 (function(){
   try {
@@ -1896,6 +1845,7 @@ function exportShopifyCSV(){
 
 </body>
 </html>
+
 
 
 
