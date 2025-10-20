@@ -172,7 +172,7 @@
   </h2>
 
   <!-- Date Range Filter -->
-  <div class="filters">
+  <div class="filters" style="justify-content:center; align-items:center; gap:10px;">
     From: <input type="date" id="shopifyStart" />
     To: <input type="date" id="shopifyEnd" />
     <button id="shopifyApply" class="btn">Apply</button>
@@ -180,16 +180,16 @@
   </div>
 
   <!-- Dual Tables -->
-  <div style="display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start;margin-top:20px;">
+  <div class="tables-container" style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;margin-top:20px;">
     <!-- Left Table: SKU Summary -->
-    <div style="background:white;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.1);overflow:hidden;">
+    <div style="background:white;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.08);overflow:hidden;">
       <table id="shopifyTable" style="width:100%;border-collapse:collapse;">
-        <thead style="background:#1C39BB;color:white;">
+        <thead>
           <tr>
-            <th style="padding:14px;text-align:left;">SKU</th>
-            <th style="padding:14px;text-align:right;">Qty</th>
-            <th style="padding:14px;text-align:right;">Gross</th>
-            <th style="padding:14px;text-align:right;">RTO Units</th>
+            <th style="padding:14px;">SKU</th>
+            <th style="padding:14px;">QTY</th>
+            <th style="padding:14px;">GROSS</th>
+            <th style="padding:14px;">RTO UNITS</th>
           </tr>
         </thead>
         <tbody>
@@ -197,15 +197,15 @@
             <td colspan="4" style="text-align:center;padding:24px;">Fetching Shopify data...</td>
           </tr>
         </tbody>
-        <tfoot style="background:#f5f5f5;font-weight:700;"></tfoot>
+        <tfoot style="background:#f6f7f9;font-weight:700;"></tfoot>
       </table>
     </div>
 
     <!-- Right Table: Summary -->
-    <div style="background:white;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.1);overflow:hidden;">
+    <div style="background:white;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.08);overflow:hidden;">
       <table id="shopifySummary" style="width:100%;border-collapse:collapse;">
-        <thead style="background:#000;color:white;">
-          <tr><th colspan="2" style="padding:14px;text-align:left;">Summary</th></tr>
+        <thead>
+          <tr><th colspan="2" style="padding:14px 12px;">Summary</th></tr>
         </thead>
         <tbody style="font-weight:600;">
           <tr><td style="padding:10px 14px;">Total Orders</td><td style="text-align:right;padding:10px 14px;">-</td></tr>
@@ -216,8 +216,8 @@
           <tr><td style="padding:10px 14px;">Shipping Charges</td><td style="text-align:right;padding:10px 14px;">-</td></tr>
           <tr><td style="padding:10px 14px;">Discounts</td><td style="text-align:right;padding:10px 14px;">-</td></tr>
           <tr><td style="padding:10px 14px;">Refunds</td><td style="text-align:right;padding:10px 14px;">-</td></tr>
-          <tr><td style="padding:10px 14px;">Total Sales <span title="Gross + Shipping Charges - Discounts" style="font-weight:400;">ℹ️</span></td><td style="text-align:right;padding:10px 14px;">-</td></tr>
-          <tr><td style="padding:10px 14px;">Net Sales <span title="Total Sales - Refunds" style="font-weight:400;">ℹ️</span></td><td style="text-align:right;padding:10px 14px;">-</td></tr>
+          <tr><td style="padding:10px 14px;">Total Sales <span class="info-icon" title="Gross + Shipping Charges - Discounts">ℹ️</span></td><td style="text-align:right;padding:10px 14px;">-</td></tr>
+          <tr><td style="padding:10px 14px;">Net Sales <span class="info-icon" title="Total Sales - Refunds">ℹ️</span></td><td style="text-align:right;padding:10px 14px;">-</td></tr>
         </tbody>
       </table>
     </div>
@@ -225,7 +225,6 @@
 
   <button class="btn" style="margin-top:25px;" onclick="showSection('salesOverview')">Back to Overview</button>
 </div>
-
 
 
 <script>
@@ -1371,256 +1370,329 @@ const TAB_SHEET1 = "Sheet1";
 
 /* --- Helpers --- */
 function parseShopifyDate(val) {
-  if (!val) return null;
+  if (!val && val !== 0) return null;
   const s = String(val).trim();
-  if (/^\d{2}[/-]\d{2}[/-]\d{4}$/.test(s)) {
-    const [d, m, y] = s.replace(/-/g, '/').split('/');
-    return new Date(+y, +m - 1, +d);
+  if (!s) return null;
+  // dd-mm-yyyy or dd/mm/yyyy
+  let m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if (m) {
+    const dd = Number(m[1]), mm = Number(m[2]), yyyy = Number(m[3]);
+    return new Date(yyyy, mm - 1, dd);
   }
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-    const [y, m, d] = s.split('-');
-    return new Date(+y, +m - 1, +d);
+  // yyyy-mm-dd
+  m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) {
+    const yyyy = Number(m[1]), mm = Number(m[2]), dd = Number(m[3]);
+    return new Date(yyyy, mm - 1, dd);
   }
   const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
 }
-function toNum(v){const x=parseFloat(String(v||'').replace(/,/g,''));return isNaN(x)?0:x;}
-function fmtINR(x){x=Math.round(x||0);const s=Math.abs(x).toString();if(s.length<=3)return x;let r=s.slice(-3),l=s.slice(0,-3);while(l.length>2){r=','+l.slice(-2)+r;l=l.slice(0,-2);}if(l)r=l+','+r;return (x<0?'-':'')+r;}
-function startOfDay(d){const x=new Date(d);x.setHours(0,0,0,0);return x;}
-function endOfDay(d){const x=new Date(d);x.setHours(23,59,59,999);return x;}
+
+function toNum(v){
+  if (v === null || v === undefined || v === '') return 0;
+  const s = String(v).replace(/,/g, '').trim();
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+// Correct Indian comma format (no decimals)
+function fmtINR(x) {
+  x = Math.round(Number(x) || 0);
+  const sign = x < 0 ? '-' : '';
+  x = Math.abs(x);
+  let s = String(x);
+  if (s.length <= 3) return sign + s;
+  const last3 = s.slice(-3);
+  const other = s.slice(0, -3);
+  const formatted = other.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," + last3;
+  return sign + formatted;
+}
+
+function startOfDay(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
+function endOfDay(d){ const x=new Date(d); x.setHours(23,59,59,999); return x; }
+
+/* fetch one tab from the Shopify spreadsheet (expects SHOPIFY_API_KEY & SHOPIFY_SHEET_ID globals) */
 async function fetchTab(tab){
-  const url=`https://sheets.googleapis.com/v4/spreadsheets/${SHOPIFY_SHEET_ID}/values/${encodeURIComponent(tab)}!A1:Z?key=${SHOPIFY_API_KEY}`;
-  const res=await fetch(url);const j=await res.json();return j.values||[];
+  if (typeof SHOPIFY_API_KEY === 'undefined' || typeof SHOPIFY_SHEET_ID === 'undefined') {
+    throw new Error('SHOPIFY_API_KEY or SHOPIFY_SHEET_ID not defined globally.');
+  }
+  const range = encodeURIComponent(tab) + '!A1:Z';
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHOPIFY_SHEET_ID}/values/${range}?key=${SHOPIFY_API_KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    const txt = await res.text().catch(()=>'<no body>');
+    throw new Error('Fetch failed for ' + tab + ': ' + res.status + ' ' + res.statusText + ' ' + txt);
+  }
+  const j = await res.json();
+  return j.values || [];
 }
 
-/* ====== ADVANCED SHOPIFY DASHBOARD (FIXED) ====== */
-/* --- Main --- */
+/* --- Main loader & renderer --- */
 async function loadShopifyDashboard(){
-  const sVal=document.getElementById('shopifyStart').value;
-  const eVal=document.getElementById('shopifyEnd').value;
-  if(!sVal||!eVal) return alert('Select start and end dates.');
+  try {
+    const sVal = document.getElementById('shopifyStart').value;
+    const eVal = document.getElementById('shopifyEnd').value;
+    if (!sVal || !eVal) return alert('Select start and end dates.');
 
-  const s = startOfDay(new Date(sVal));
-  const e = endOfDay(new Date(eVal));
-  const tBody = document.querySelector('#shopifyTable tbody');
-  tBody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;">Fetching Shopify data...</td></tr>';
+    const s = startOfDay(new Date(sVal));
+    const e = endOfDay(new Date(eVal));
 
-  // fetch both tabs
-  const [ordersVals, sheet1Vals] = await Promise.all([fetchTab(TAB_ORDERS), fetchTab(TAB_SHEET1)]);
+    const tBody = document.querySelector('#shopifyTable tbody');
+    tBody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;">Fetching Shopify data...</td></tr>';
 
-  if(!ordersVals.length || !sheet1Vals.length){
-    tBody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;">No data or invalid sheet access.</td></tr>';
-    return;
-  }
+    // fetch both tabs in parallel
+    const [ordersVals, sheet1Vals] = await Promise.all([
+      fetchTab(TAB_ORDERS),
+      fetchTab(TAB_SHEET1)
+    ]);
 
-  const hdrO = ordersVals[0].map(h=> (h||'').toString().toLowerCase().trim());
-  const hdrS = sheet1Vals[0].map(h=> (h||'').toString().toLowerCase().trim());
-
-  const oIdx = {
-    sku: hdrO.indexOf('sku'),
-    qty: hdrO.indexOf('qty'),
-    price: hdrO.indexOf('price (per unit)'),
-    date: hdrO.indexOf('date'),
-    order: hdrO.indexOf('order number'),
-    discApp: hdrO.indexOf('discount application'),
-    ship: hdrO.indexOf('shipping charges'),
-    disc: hdrO.indexOf('discounts')
-  };
-
-  const sIdx = {
-    sku: hdrS.indexOf('master sku'),
-    qty: hdrS.indexOf('product quantity'),
-    rto: hdrS.indexOf('rto initiated date'),
-    del: hdrS.indexOf('order delivered date'),
-    order: hdrS.indexOf('order id'),
-    total: hdrS.indexOf('order total')
-  };
-
-  // Aggregation containers
-  const skuMap = new Map();
-  const rtoUnits = new Map();
-
-  const ordersSet = new Set();        // unique order numbers from Orders_API
-  const shippingMap = new Map();      // orderNumber -> shipping charge (first encountered)
-  const discountMap = new Map();      // orderNumber -> discount (first encountered)
-
-  const rtoOrderSet = new Set();      // unique order ids from Sheet1 RTO
-  const refundOrderMap = new Map();   // orderId -> orderTotal (first encountered)
-  const deliveredSet = new Set();     // unique delivered order ids
-
-  let pack2 = 0, pack3 = 0;
-
-  // Process Orders_API: SKU, Qty, Gross (and shipping/discounts per unique order), pack counts
-  for (let i = 1; i < ordersVals.length; i++){
-    const r = ordersVals[i];
-    const dateVal = r[oIdx.date];
-    const parsedDate = parseShopifyDate(dateVal);
-    if (!parsedDate || parsedDate < s || parsedDate > e) continue;
-
-    const sku = (r[oIdx.sku] || '').toString().trim();
-    const qty = toNum(r[oIdx.qty]);
-    const price = toNum(r[oIdx.price]);
-    const orderNum = (r[oIdx.order] || '').toString().trim();
-    const discApp = (r[oIdx.discApp] || '').toString().trim();
-    const shipVal = toNum(r[oIdx.ship]);
-    const discVal = toNum(r[oIdx.disc]);
-
-    if (!sku) continue;
-
-    // aggregate SKU: gross computed as sum(qty * unitPrice) per row (safer)
-    const key = sku;
-    if (!skuMap.has(key)) skuMap.set(key, { sku: key, qty: 0, gross: 0 });
-    const rec = skuMap.get(key);
-    rec.qty += qty;
-    rec.gross += qty * price;
-
-    // pack counts (per-row as requested)
-    if (discApp === 'Pack of 2') pack2++;
-    if (discApp === 'Pack of 3') pack3++;
-
-    // shipping/discounts - only store once per unique order number
-    if (orderNum) {
-      if (!shippingMap.has(orderNum)) shippingMap.set(orderNum, shipVal);
-      if (!discountMap.has(orderNum)) discountMap.set(orderNum, discVal);
-      ordersSet.add(orderNum);
+    if (!ordersVals.length || !sheet1Vals.length) {
+      tBody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;">No data or invalid sheet access.</td></tr>';
+      return;
     }
-  }
 
-  // Process Sheet1: RTO units, refunds (unique orders), delivered
-  for (let i = 1; i < sheet1Vals.length; i++){
-    const r = sheet1Vals[i];
-    const rtoDateVal = r[sIdx.rto];
-    const delDateVal = r[sIdx.del];
-    const rtoDate = parseShopifyDate(rtoDateVal);
-    const delDate = parseShopifyDate(delDateVal);
-    const masterSku = (r[sIdx.sku] || '').toString().trim();
-    const prodQty = toNum(r[sIdx.qty]);
-    const orderId = (r[sIdx.order] || '').toString().trim();
-    const orderTotal = toNum(r[sIdx.total]);
+    // headers (normalized)
+    const hdrO = ordersVals[0].map(h => (h||'').toString().toLowerCase().trim());
+    const hdrS = sheet1Vals[0].map(h => (h||'').toString().toLowerCase().trim());
 
-    // RTO initiated date range: rto units & refunds
-    if (rtoDate && rtoDate >= s && rtoDate <= e) {
-      if (masterSku) {
-        rtoUnits.set(masterSku, (rtoUnits.get(masterSku) || 0) + prodQty);
-      }
-      if (orderId) {
-        rtoOrderSet.add(orderId);
-        // refunds: pick first encountered Order Total for unique order id
-        if (!refundOrderMap.has(orderId) && orderTotal) refundOrderMap.set(orderId, orderTotal);
+    const oIdx = {
+      sku: hdrO.indexOf('sku'),
+      qty: hdrO.indexOf('qty'),
+      price: hdrO.indexOf('price (per unit)'),
+      date: hdrO.indexOf('date'),
+      order: hdrO.indexOf('order number'),
+      discApp: hdrO.indexOf('discount application'),
+      ship: hdrO.indexOf('shipping charges'),
+      disc: hdrO.indexOf('discounts')
+    };
+
+    const sIdx = {
+      sku: hdrS.indexOf('master sku'),
+      qty: hdrS.indexOf('product quantity'),
+      rto: hdrS.indexOf('rto initiated date'),
+      del: hdrS.indexOf('order delivered date'),
+      order: hdrS.indexOf('order id'),
+      total: hdrS.indexOf('order total')
+    };
+
+    // aggregator containers
+    const skuMap = new Map();         // sku -> {sku, qty, gross}
+    const rtoUnits = new Map();       // masterSku -> units
+
+    const orderNumsSet = new Set();   // unique order numbers from Orders_API
+    const shippingMap = new Map();    // orderNumber -> shipping (first)
+    const discountMap = new Map();    // orderNumber -> discount (first)
+
+    const rtoOrderSet = new Set();    // unique order ids in RTO (Sheet1)
+    const refundOrderMap = new Map(); // orderId -> orderTotal (first)
+    const deliveredSet = new Set();   // unique delivered order ids
+
+    let pack2 = 0, pack3 = 0;
+
+    // Process Orders_API rows (by Date column)
+    for (let i = 1; i < ordersVals.length; i++) {
+      const row = ordersVals[i];
+      const dateVal = row[oIdx.date];
+      const parsed = parseShopifyDate(dateVal);
+      if (!parsed || parsed < s || parsed > e) continue;
+
+      const sku = (row[oIdx.sku] || '').toString().trim();
+      const qty = toNum(row[oIdx.qty]);
+      const price = toNum(row[oIdx.price]);
+      const orderNum = (row[oIdx.order] || '').toString().trim();
+      const discApp = (row[oIdx.discApp] || '').toString().trim();
+      const ship = toNum(row[oIdx.ship]);
+      const disc = toNum(row[oIdx.disc]);
+
+      if (!sku) continue;
+
+      // aggregate per-SKU (gross = per-row qty * per-row price then summed)
+      if (!skuMap.has(sku)) skuMap.set(sku, { sku, qty: 0, gross: 0 });
+      const rec = skuMap.get(sku);
+      rec.qty += qty;
+      rec.gross += qty * price;
+
+      // pack counts (per-row)
+      if (discApp === 'Pack of 2') pack2++;
+      if (discApp === 'Pack of 3') pack3++;
+
+      // track shipping/discount once per unique order number
+      if (orderNum) {
+        if (!shippingMap.has(orderNum)) shippingMap.set(orderNum, ship);
+        if (!discountMap.has(orderNum)) discountMap.set(orderNum, disc);
+        orderNumsSet.add(orderNum);
       }
     }
 
-    // Delivered check
-    if (delDate && delDate >= s && delDate <= e) {
-      if (orderId) deliveredSet.add(orderId);
+    // Process Sheet1 rows for RTO / Refunds / Delivered
+    for (let i = 1; i < sheet1Vals.length; i++) {
+      const row = sheet1Vals[i];
+      const rtoDateVal = row[sIdx.rto];
+      const delDateVal = row[sIdx.del];
+      const rtoDate = parseShopifyDate(rtoDateVal);
+      const delDate = parseShopifyDate(delDateVal);
+      const masterSku = (row[sIdx.sku] || '').toString().trim();
+      const prodQty = toNum(row[sIdx.qty]);
+      const orderId = (row[sIdx.order] || '').toString().trim();
+      const orderTotal = toNum(row[sIdx.total]);
+
+      // RTO initiated date range
+      if (rtoDate && rtoDate >= s && rtoDate <= e) {
+        if (masterSku) rtoUnits.set(masterSku, (rtoUnits.get(masterSku) || 0) + prodQty);
+        if (orderId) {
+          rtoOrderSet.add(orderId);
+          if (!refundOrderMap.has(orderId) && orderTotal) refundOrderMap.set(orderId, orderTotal);
+        }
+      }
+
+      // Delivered date range
+      if (delDate && delDate >= s && delDate <= e && orderId) {
+        deliveredSet.add(orderId);
+      }
     }
-  }
 
-  // Combine keys for table 1
-  const allSkus = [...new Set([...skuMap.keys(), ...rtoUnits.keys()])];
-  let totalQty = 0, totalGross = 0, totalRto = 0;
-  let rowsHTML = '';
+    // Build left table rows (union of SKUs from Orders_API and Master SKUs from Sheet1 RTO)
+    const allKeys = [...new Set([...skuMap.keys(), ...rtoUnits.keys()])];
+    let totalQty = 0, totalGross = 0, totalRto = 0;
+    let rowsHTML = '';
 
-  allSkus.forEach(k => {
-    const qty = skuMap.get(k)?.qty || 0;
-    const gross = skuMap.get(k)?.gross || 0;
-    const r = rtoUnits.get(k) || 0;
-    rowsHTML += `<tr>
-      <td style="text-align:center;">${k}</td>
-      <td style="text-align:center;">${fmtINR(qty)}</td>
-      <td style="text-align:center;">${fmtINR(gross)}</td>
-      <td style="text-align:center;">${fmtINR(r)}</td>
+    allKeys.forEach(k => {
+      const qty = skuMap.get(k)?.qty || 0;
+      const gross = skuMap.get(k)?.gross || 0;
+      const rto = rtoUnits.get(k) || 0;
+      rowsHTML += `<tr>
+        <td style="text-align:center;">${k}</td>
+        <td style="text-align:center;">${fmtINR(qty)}</td>
+        <td style="text-align:center;">${fmtINR(gross)}</td>
+        <td style="text-align:center;">${fmtINR(rto)}</td>
+      </tr>`;
+      totalQty += qty;
+      totalGross += gross;
+      totalRto += rto;
+    });
+
+    tBody.innerHTML = rowsHTML || '<tr><td colspan="4" style="text-align:center;padding:24px;">No data.</td></tr>';
+    document.querySelector('#shopifyTable tfoot').innerHTML = `<tr>
+      <td><b>TOTAL</b></td>
+      <td style="text-align:center;"><b>${fmtINR(totalQty)}</b></td>
+      <td style="text-align:center;"><b>${fmtINR(totalGross)}</b></td>
+      <td style="text-align:center;"><b>${fmtINR(totalRto)}</b></td>
     </tr>`;
-    totalQty += qty;
-    totalGross += gross;
-    totalRto += r;
-  });
 
-  tBody.innerHTML = rowsHTML || '<tr><td colspan="4" style="text-align:center;padding:24px;">No data.</td></tr>';
-  document.querySelector('#shopifyTable tfoot').innerHTML = `<tr>
-    <td><b>TOTAL</b></td>
-    <td style="text-align:center;"><b>${fmtINR(totalQty)}</b></td>
-    <td style="text-align:center;"><b>${fmtINR(totalGross)}</b></td>
-    <td style="text-align:center;"><b>${fmtINR(totalRto)}</b></td>
-  </tr>`;
+    // compute unique-order totals properly
+    const shippingSum = Array.from(shippingMap.values()).reduce((a,b)=>a+b,0);
+    const discountSum = Array.from(discountMap.values()).reduce((a,b)=>a+b,0);
+    const refundSum = Array.from(refundOrderMap.values()).reduce((a,b)=>a+b,0);
 
-  // Compute unique-order sums
-  const shippingSum = Array.from(shippingMap.values()).reduce((a,b)=>a+b,0);
-  const discountSum = Array.from(discountMap.values()).reduce((a,b)=>a+b,0);
-  const refundSum = Array.from(refundOrderMap.values()).reduce((a,b)=>a+b,0);
+    const totalOrders = orderNumsSet.size;
+    const rtoCount = rtoOrderSet.size;
+    const deliveredCount = deliveredSet.size;
+    const totalSales = totalGross + shippingSum - discountSum;
+    const netSales = totalSales - refundSum;
 
-  const totalOrders = ordersSet.size;
-  const rtoCount = rtoOrderSet.size;
-  const deliveredCount = deliveredSet.size;
-  const totalSales = totalGross + shippingSum - discountSum;
-  const netSales = totalSales - refundSum;
+    // render summary table (with info icons)
+    const summaryRows = [
+      ['Total Orders', totalOrders],
+      ['RTO', rtoCount],
+      ['DELIVERED', deliveredCount],
+      ['Pack of 2', pack2],
+      ['Pack of 3', pack3],
+      ['Shipping Charges', shippingSum],
+      ['Discounts', discountSum],
+      ['Refunds', refundSum],
+      [`Total Sales <span class="info-icon" title="Gross + Shipping Charges - Discounts">ℹ️</span>`, totalSales],
+      [`Net Sales <span class="info-icon" title="Total Sales - Refunds">ℹ️</span>`, netSales]
+    ];
 
-  // Build summary with info icons for totals
-  const summaryRows = [
-    ['Total Orders', totalOrders],
-    ['RTO', rtoCount],
-    ['DELIVERED', deliveredCount],
-    ['Pack of 2', pack2],
-    ['Pack of 3', pack3],
-    ['Shipping Charges', shippingSum],
-    ['Discounts', discountSum],
-    ['Refunds', refundSum],
-    [`Total Sales <span class="info-icon" title="Gross + Shipping Charges - Discounts">ℹ️</span>`, totalSales],
-    [`Net Sales <span class="info-icon" title="Total Sales - Refunds">ℹ️</span>`, netSales]
-  ];
+    document.querySelector('#shopifySummary tbody').innerHTML = summaryRows.map(([k,v])=>
+      `<tr><td style="padding:10px 14px;">${k}</td><td style="text-align:right;padding:10px 14px;">${fmtINR(v)}</td></tr>`
+    ).join('');
 
-  const sBody = document.querySelector('#shopifySummary tbody');
-  sBody.innerHTML = summaryRows.map(([k, v]) => `<tr><td style="padding:10px 14px;">${k}</td><td style="text-align:right;padding:10px 14px;">${fmtINR(v)}</td></tr>`).join('');
+  } catch (err) {
+    console.error('Shopify dashboard error:', err);
+    const tBody = document.querySelector('#shopifyTable tbody');
+    if (tBody) tBody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:24px;color:#d00;">Error fetching data. Check console.</td></tr>`;
+  }
 }
 
-/* --- Wire up buttons (kept as you had) --- */
-document.getElementById('shopifyApply').removeEventListener?.('click', loadShopifyDashboard);
-document.getElementById('shopifyApply').addEventListener('click', loadShopifyDashboard);
-
-document.getElementById('shopifyExport').removeEventListener?.('click', null);
-document.getElementById('shopifyExport').addEventListener('click', ()=>{
+/* --- Export CSV for SKU table --- */
+function exportShopifyCSV(){
   const t = document.querySelector('#shopifyTable');
+  if (!t) return;
   let csv = '';
   t.querySelectorAll('tr').forEach(tr=>{
     const cols = tr.querySelectorAll('th,td');
-    csv += Array.from(cols).map(td=>`"${td.innerText.replace(/"/g,'""')}"`).join(',') + '\n';
+    const arr = Array.from(cols).map(td => `"${td.innerText.replace(/"/g,'""')}"`);
+    csv += arr.join(',') + '\n';
   });
   const blob = new Blob([csv], {type:'text/csv'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = 'shopify_sales.csv'; a.click(); URL.revokeObjectURL(url);
-});
+}
 
-/* ====== Inject CSS small fixes for alignment + summary header + info-icon ====== */
+/* --- Wiring: Apply & Export buttons --- */
+(function wireShopifyButtons(){
+  const applyBtn = document.getElementById('shopifyApply');
+  if (applyBtn) {
+    applyBtn.removeEventListener?.('click', loadShopifyDashboard);
+    applyBtn.addEventListener('click', loadShopifyDashboard);
+  }
+  const exportBtn = document.getElementById('shopifyExport');
+  if (exportBtn) {
+    exportBtn.removeEventListener?.('click', exportShopifyCSV);
+    exportBtn.addEventListener('click', exportShopifyCSV);
+  }
+})();
+
+/* --- Inject CSS fixes for alignment + black summary header + tooltip --- */
 (function injectShopifyStyles(){
   const style = document.createElement('style');
   style.textContent = `
-    /* center headers and all table cells for Shopify section (SKU centered as requested) */
-    #shopifySalesSection thead th { text-align:center; vertical-align:middle; }
-    #shopifySalesSection thead th:first-child { text-align:center; } /* SKU centered */
-    #shopifySalesSection tbody td { text-align:center; vertical-align:middle; padding:12px 14px; }
-    #shopifyTable thead th, #shopifySummary thead th { border-radius:8px 8px 0 0; }
-
+    /* Center headers + cells for Shopify section (SKU centered as requested) */
+    #shopifySalesSection thead th { text-align:center; vertical-align:middle; padding:14px; font-weight:700; }
+    #shopifySalesSection tbody td { text-align:center; vertical-align:middle; padding:12px 14px; border-bottom:1px solid #f0f0f0; }
     /* Summary black header */
-    #shopifySummary thead th { background:#000 !important; color:#fff !important; }
-
-    .info-icon { font-size:12px; margin-left:6px; cursor:help; display:inline-block; vertical-align:middle; }
+    #shopifySummary thead th { background:#000 !important; color:#fff !important; text-align:center; }
+    .info-icon { font-size:12px; margin-left:6px; cursor:help; display:inline-block; vertical-align:middle; color:#1C39BB; }
+    /* custom tooltip bubble using the title attribute */
+    .info-icon:hover::after {
+      content: attr(title);
+      position: absolute;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      white-space: nowrap;
+      z-index: 9999;
+      pointer-events: none;
+    }
+    /* table corner polish */
+    #shopifyTable thead th, #shopifySummary thead th { border-radius:8px 8px 0 0; }
+    @media(max-width:900px){ .tables-container { grid-template-columns:1fr; } }
   `;
   document.head.appendChild(style);
 })();
 
-/* Auto-load yesterday */
+/* Auto-load yesterday (safe) */
 (function(){
   try {
-    const y=new Date(); y.setDate(y.getDate()-1); const yStr=y.toISOString().slice(0,10);
-    const startEl=document.getElementById('shopifyStart');
-    const endEl=document.getElementById('shopifyEnd');
-    if(startEl) startEl.value=yStr;
-    if(endEl) endEl.value=yStr;
-    // Delay slightly to let page settle
-    setTimeout(()=>{ if(typeof loadShopifyDashboard === 'function') loadShopifyDashboard(); }, 120);
-  } catch(e) { console.warn('Auto-load Shopify failed', e); }
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    const yStr = y.toISOString().slice(0,10);
+    const sEl = document.getElementById('shopifyStart');
+    const eEl = document.getElementById('shopifyEnd');
+    if (sEl) sEl.value = yStr;
+    if (eEl) eEl.value = yStr;
+    // tiny delay to let DOM settle
+    setTimeout(()=>{ if (typeof loadShopifyDashboard === 'function') loadShopifyDashboard(); }, 120);
+  } catch (e) {
+    console.warn('Shopify auto-load error', e);
+  }
 })();
-
 
  </script>
 </body>
@@ -1631,6 +1703,7 @@ document.getElementById('shopifyExport').addEventListener('click', ()=>{
 
 </body>
 </html>
+
 
 
 
