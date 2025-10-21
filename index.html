@@ -2242,6 +2242,7 @@ async function renderSalesShare() {
   document.getElementById("salesShareLegend").innerHTML = legendHTML;
 
   const ctx = document.getElementById("salesShareChart").getContext("2d");
+    // destroy old chart if present
   if (salesChart) salesChart.destroy();
 
   salesChart = new Chart(ctx, {
@@ -2256,12 +2257,20 @@ async function renderSalesShare() {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false, // lets parent control sizing
       plugins: {
         legend: { display: false },
         datalabels: {
           color: '#fff',
-          font: { weight: 'bold', size: 15 },
-          formatter: (v, ctx) => Math.round((v / totalSum) * 100) + '%'
+          font: { weight: 'bold', size: 20 },
+          // Force an integer percent string with no decimals
+          formatter: (value, ctx) => {
+            const total = ctx.chart.data.datasets[0].data.reduce((a,b)=>a+b,0) || 1;
+            const pct = Math.round((value / total) * 100);
+            return String(pct) + '%';
+          },
+          anchor: 'center',
+          align: 'center'
         },
         title: {
           display: true,
@@ -2271,10 +2280,13 @@ async function renderSalesShare() {
         tooltip: {
           callbacks: {
             label: function(context) {
-              const ch = context.label;
-              const val = context.raw;
-              const share = Math.round((val / totalSum) * 100);
-              return `${ch} — ₹${formatINR(val)} (${share}%)`;
+              const ch = context.label || '';
+              const val = Number(context.raw) || 0;
+              const total = context.chart.data.datasets[0].data.reduce((a,b)=>a+b,0) || 1;
+              const share = Math.round((val / total) * 100);
+              // format Indian rupee with commas
+              const rupees = val.toLocaleString('en-IN', {maximumFractionDigits: 0});
+              return `${ch} — ₹${rupees} (${share}%)`;
             }
           }
         }
@@ -2310,6 +2322,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
