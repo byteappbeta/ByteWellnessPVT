@@ -39,7 +39,7 @@
     .flipkart { background:#2874F0; color:white; }
     .blinkit { background:#F7E415; color:#333; }
 
-/* ===== SMART ADAPTIVE DESKTOP LOOK ===== */
+/* ===== SMART DESKTOP LAYOUT (UNIFIED VERSION) ===== */
 html, body {
   width: 100%;
   height: 100%;
@@ -53,68 +53,61 @@ html, body {
   margin: 0 auto;
 }
 
-/* --- Dynamically scale desktop view for smaller screens --- */
+/* --- Scale down desktop layout dynamically for smaller screens --- */
+@media (min-width: 1600px) {
+  body { zoom: 1; transform: none; }
+}
 @media (max-width: 1600px) and (min-width: 1200px) {
-  body { transform: scale(0.95); transform-origin: top center; }
+  body { zoom: 0.95; transform-origin: top center; }
 }
 @media (max-width: 1200px) and (min-width: 992px) {
-  body { transform: scale(0.9); transform-origin: top center; }
+  body { zoom: 0.9; transform-origin: top center; }
 }
 @media (max-width: 992px) and (min-width: 768px) {
-  body { transform: scale(0.85); transform-origin: top center; }
+  body { zoom: 0.85; transform-origin: top center; }
 }
 @media (max-width: 768px) and (min-width: 600px) {
-  body { transform: scale(0.8); transform-origin: top center; }
+  body { zoom: 0.8; transform-origin: top center; }
 }
-@media (max-width: 600px) {
-  body { transform: scale(0.75); transform-origin: top center; }
+@media (max-width: 600px) and (min-width: 420px) {
+  body { zoom: 0.75; transform-origin: top center; }
 }
+@media (max-width: 420px) {
+  body { zoom: 0.7; transform-origin: top center; }
+}
+
+/* --- Always maintain 3-column warehouse layout like desktop --- */
+.warehouses {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 20px !important;
+  justify-content: center !important;
+  align-items: start !important;
+  width: 100% !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+}
+
+/* --- Button consistency --- */
+button, .btn {
+  font-size: 16px !important;
+  padding: 12px 20px !important;
+}
+
+/* --- Back button spacing --- */
+.btn-back, button[onclick*="showSection"] {
+  margin-top: 25px !important;
+}
+
+/* --- Ensure stable scrolling --- */
 body {
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-    /* ===== FORCE DESKTOP LAYOUT ON MOBILE ===== */
-@media (max-width: 9999px) {
-  /* Prevent mobile stacking */
-  .container, .warehouses, .grid, .tables-container {
-    width: 1200px !important;
-    max-width: 1200px !important;
-    margin: 0 auto !important;
-  }
 
-  /* Prevent mobile zooming */
-  body {
-    transform: none !important;
-    zoom: 0.8; /* Adjust between 0.75 - 0.9 if needed */
-    transform-origin: top center !important;
-  }
-
-  /* Keep warehouse cards in desktop grid */
-  .warehouses {
-    display: grid !important;
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 20px !important;
-    justify-content: center !important;
-    align-items: start !important;
-  }
-
-  /* Buttons alignment */
-  button, .btn {
-    font-size: 16px !important;
-    padding: 12px 20px !important;
-  }
-
-  /* Fix Back button spacing */
-  .btn-back, button[onclick*="showSection"] {
-    margin-top: 25px !important;
-  }
-
-  /* Avoid overflow */
-  html, body {
-    overflow-x: hidden !important;
-  }
+html, body {
+  overflow-x: hidden !important;
 }
-
 
 
     
@@ -2020,12 +2013,66 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 
+  <script>
+/* ====== SMART PWA BACK BUTTON FIX ====== */
+document.addEventListener("DOMContentLoaded", function () {
+  const sectionStack = [];
+  const allSections = document.querySelectorAll(".container");
+
+  // Keep reference to your original showSection (if any)
+  const originalShowSection = window.showSection || function(id) {
+    allSections.forEach(sec => sec.classList.add("hidden"));
+    const target = document.getElementById(id);
+    if (target) target.classList.remove("hidden");
+  };
+
+  // Wrap showSection with history handling
+  window.showSection = function (id) {
+    const current = sectionStack[sectionStack.length - 1];
+    if (current !== id) {
+      sectionStack.push(id);
+      history.pushState({ section: id }, "", `#${id}`);
+    }
+
+    // Show only the chosen section
+    allSections.forEach(sec => sec.classList.add("hidden"));
+    const target = document.getElementById(id);
+    if (target) target.classList.remove("hidden");
+  };
+
+  // Handle browser/OS back button
+  window.addEventListener("popstate", function (event) {
+    if (sectionStack.length > 1) {
+      sectionStack.pop();
+      const prev = sectionStack[sectionStack.length - 1];
+      allSections.forEach(sec => sec.classList.add("hidden"));
+      const target = document.getElementById(prev);
+      if (target) target.classList.remove("hidden");
+    } else {
+      // Already at home → confirm before closing
+      if (confirm("Exit the app?")) {
+        window.close();
+      } else {
+        history.pushState({}, "", "#mainMenu"); // prevent accidental close
+      }
+    }
+  });
+
+  // Initialize stack with the visible section (usually main menu)
+  const visible = Array.from(allSections).find(sec => !sec.classList.contains("hidden"));
+  sectionStack.push(visible ? visible.id : "mainMenu");
+  history.replaceState({ section: visible ? visible.id : "mainMenu" }, "", `#${visible ? visible.id : "mainMenu"}`);
+});
+</script>
+
+
 
 
 
 
 </body>
 </html>
+
 
 
 
