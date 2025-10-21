@@ -2111,10 +2111,10 @@ async function fetchSalesData(channel, start, end) {
       valueCols: ['invoice amount']
     },
     Shopify: {
-      id: '1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJk',
-      tab: 'Orders_API',
-      dateCol: 'date',
-      valueCols: ['Total Price (Order)']
+     id: '1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJk',
+     tab: 'Orders_API',
+     dateCol: 'date',
+     valueCols: ['total price (order)'] 
     },
     Blinkit: {
       id: '1LJ7H8Zwy8-mM_1K0TCdke-89qfK00yQAV04OtitC45Q',
@@ -2154,8 +2154,8 @@ async function fetchSalesData(channel, start, end) {
         if (!isNaN(val)) gross += val;
       }
       else if (channel === 'Shopify') {
-        const valIdx = headers.indexOf('Total Price (Order)');
-        const val = parseFloat((vals[i][valIdx] || '0').replace(/,/g, ''));
+        const valIdx = headers.indexOf('total price (order)');
+        const val = parseFloat((vals[i][valIdx] || '0').replace(/,/g, '')) || 0;
         if (!isNaN(val)) gross += val;
       }
       else if (channel === 'Blinkit') {
@@ -2267,6 +2267,25 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("shareEnd").value = todayStr;
   renderSalesShare();
 });
+
+  document.addEventListener("DOMContentLoaded", () => {
+  // ✅ Auto-set both dates to yesterday
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  const yStr = yesterday.toISOString().slice(0, 10);
+  const sEl = document.getElementById("shareStart");
+  const eEl = document.getElementById("shareEnd");
+
+  if (sEl && eEl) {
+    sEl.value = yStr;
+    eEl.value = yStr;
+    // ✅ Automatically load chart for yesterday
+    loadSalesShare();
+  }
+});
+
 </script>
 
 
@@ -2274,6 +2293,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
