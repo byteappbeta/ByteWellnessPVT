@@ -2154,7 +2154,7 @@ async function fetchSalesData(channel, start, end) {
         if (!isNaN(val)) gross += val;
       }
       else if (channel === 'Shopify') {
-        const valIdx = headers.indexOf('order total');
+        const valIdx = headers.indexOf('Total Price (Order)');
         const val = parseFloat((vals[i][valIdx] || '0').replace(/,/g, ''));
         if (!isNaN(val)) gross += val;
       }
@@ -2274,6 +2274,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
