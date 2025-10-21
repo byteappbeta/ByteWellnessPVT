@@ -2316,10 +2316,37 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
+  <!-- your other JS scripts (Flipkart, Amazon, Shopify, Blinkit, etc.) -->
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // ✅ Auto-set yesterday’s date and render Sales Share
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const yStr = yesterday.toISOString().slice(0, 10);
+
+  const sEl = document.getElementById("shareStart");
+  const eEl = document.getElementById("shareEnd");
+  if (sEl && eEl) {
+    sEl.value = yStr;
+    eEl.value = yStr;
+    renderSalesShare();
+  }
+
+  // ✅ Initialize other dashboards if they exist
+  if (typeof initFlipkartUI === "function") initFlipkartUI();
+  if (typeof initAmazonUI === "function") initAmazonUI();
+  if (typeof initShopifyUI === "function") initShopifyUI();
+  if (typeof initBlinkitUI === "function") initBlinkitUI();
+});
+</script>
+
 
 
 
 
 </body>
 </html>
+
 
