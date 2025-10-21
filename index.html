@@ -2100,7 +2100,7 @@ async function fetchSalesData(channel, start, end) {
   const sheets = {
     Amazon: {
       id: '1e4Vdkw2Ms0dCxskAKbUfLk3ttqeFT_nbQDhsPtKWWhA',
-      tab: 'sheet1',
+      tab: 'Orders',
       dateCol: 'purchase-date',
       valueCols: ['item-price', 'item-promotion-discount']
     },
@@ -2114,7 +2114,7 @@ async function fetchSalesData(channel, start, end) {
       id: '1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJk',
       tab: 'Orders_API',
       dateCol: 'date',
-      valueCols: ['order total']
+      valueCols: ['Total Price (Order)']
     },
     Blinkit: {
       id: '1LJ7H8Zwy8-mM_1K0TCdke-89qfK00yQAV04OtitC45Q',
@@ -2274,6 +2274,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
