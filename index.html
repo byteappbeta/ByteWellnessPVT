@@ -109,6 +109,19 @@ html, body {
   overflow-x: hidden !important;
 }
 
+    /* ===== Responsive Pie Chart Fix ===== */
+#salesShareChart {
+  width: 100% !important;
+  max-width: 600px;
+  height: auto !important;
+  aspect-ratio: 1 / 1;
+}
+
+@media (max-width: 768px) {
+  #salesShareChart {
+    max-width: 320px;
+  }
+}
 
     
   </style>
@@ -192,15 +205,17 @@ html, body {
     <button class="btn" onclick="renderSalesShare()">Apply</button>
   </div>
 
-  <!-- 🔹 Chart & Legend -->
-  <div style="display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:40px; margin-top:20px;">
-    <canvas id="salesShareChart" style="width:380px; height:380px;"></canvas>
-    <div id="salesShareLegend" style="font-weight:600; font-size:16px;"></div>
+<!-- ◆ Chart & Legend -->
+<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; margin-top:30px;">
+  <div style="width:90%; max-width:600px; position:relative;">
+    <canvas id="salesShareChart" style="width:100%; height:auto; aspect-ratio:1/1;"></canvas>
   </div>
-
-  <p id="salesShareStatus" style="text-align:center; font-weight:600; margin-top:20px;"></p>
-  <button class="btn" style="margin-top:30px;" onclick="showSection('sales')">Back</button>
+  <div id="salesShareLegend" style="font-weight:600; font-size:16px; margin-top:20px; text-align:center;"></div>
 </div>
+
+<p id="salesShareStatus" style="text-align:center; font-weight:600; margin-top:20px;"></p>
+<button class="btn" style="margin-top:25px;" onclick="showSection('sales')">Back</button>
+
 
 
 <!-- BLINKIT SALES -->
@@ -2083,7 +2098,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   
   <!-- 🥧 TOTAL SALES & SHARE SECTION -->
-  <!-- Load Chart.js + Data Labels -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
@@ -2111,10 +2125,10 @@ async function fetchSalesData(channel, start, end) {
       valueCols: ['invoice amount']
     },
     Shopify: {
-     id: '1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJk',
-     tab: 'Orders_API',
-     dateCol: 'date',
-     valueCols: ['total price (order)'] 
+      id: '1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJk',
+      tab: 'Orders_API',
+      dateCol: 'date',
+      valueCols: ['total price (order)']
     },
     Blinkit: {
       id: '1LJ7H8Zwy8-mM_1K0TCdke-89qfK00yQAV04OtitC45Q',
@@ -2147,21 +2161,18 @@ async function fetchSalesData(channel, start, end) {
         const price = parseFloat((vals[i][priceIdx] || '0').replace(/,/g, '')) || 0;
         const discount = parseFloat((vals[i][discountIdx] || '0').replace(/,/g, '')) || 0;
         gross += (price - discount);
-      }
-      else if (channel === 'Flipkart') {
+      } else if (channel === 'Flipkart') {
         const valIdx = headers.indexOf('invoice amount');
-        const val = parseFloat((vals[i][valIdx] || '0').replace(/,/g, ''));
-        if (!isNaN(val)) gross += val;
-      }
-      else if (channel === 'Shopify') {
+        const val = parseFloat((vals[i][valIdx] || '0').replace(/,/g, '')) || 0;
+        gross += val;
+      } else if (channel === 'Shopify') {
         const valIdx = headers.indexOf('total price (order)');
         const val = parseFloat((vals[i][valIdx] || '0').replace(/,/g, '')) || 0;
-        if (!isNaN(val)) gross += val;
-      }
-      else if (channel === 'Blinkit') {
+        gross += val;
+      } else if (channel === 'Blinkit') {
         const valIdx = headers.indexOf('sales');
-        const val = parseFloat((vals[i][valIdx] || '0').replace(/,/g, ''));
-        if (!isNaN(val)) gross += val;
+        const val = parseFloat((vals[i][valIdx] || '0').replace(/,/g, '')) || 0;
+        gross += val;
       }
     }
     return gross;
@@ -2171,7 +2182,7 @@ async function fetchSalesData(channel, start, end) {
   }
 }
 
-// 🔹 Parse Date (supports dd-mm-yyyy, yyyy-mm-dd, etc.)
+// 🔹 Parse Date helper
 function parseDate(v) {
   if (!v) return null;
   const s = String(v).trim();
@@ -2214,17 +2225,27 @@ async function renderSalesShare() {
     return;
   }
 
-  // 🔹 Legend with Gross Values
-  const legendHTML = Object.entries(totals).map(([k, v]) => {
-    const color = chartColors[k];
-    return `<div style="margin-bottom:8px;">
+  // 🔹 Format number with Indian commas
+  const formatINR = n => n.toLocaleString('en-IN');
+
+ // 🔹 Build legend with gross + share (no decimals)
+let legendHTML = "";
+const formatINR = n => Math.round(n).toLocaleString('en-IN'); // ✅ force integer only
+
+for (const [channel, value] of Object.entries(totals)) {
+  const share = Math.round((value / totalSum) * 100);
+  const color = chartColors[channel];
+  legendHTML += `
+    <div style="margin-bottom:8px; font-weight:600;">
       <span style="display:inline-block;width:16px;height:16px;background:${color};border-radius:3px;margin-right:8px;"></span>
-      ${k} — ₹${v.toLocaleString('en-IN')}
+      ${channel} — ₹${formatINR(value)} (${share}%)
     </div>`;
-  }).join("");
-  document.getElementById("salesShareLegend").innerHTML = legendHTML;
+}
+
+document.getElementById("salesShareLegend").innerHTML = legendHTML;
 
   const ctx = document.getElementById("salesShareChart").getContext("2d");
+    // destroy old chart if present
   if (salesChart) salesChart.destroy();
 
   salesChart = new Chart(ctx, {
@@ -2239,17 +2260,38 @@ async function renderSalesShare() {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false, // lets parent control sizing
       plugins: {
         legend: { display: false },
         datalabels: {
           color: '#fff',
-          font: { weight: 'bold', size: 14 },
-          formatter: (v, ctx) => ((v / totalSum) * 100).toFixed(0) + '%'
+          font: { weight: 'bold', size: 20 },
+          // Force an integer percent string with no decimals
+          formatter: (value, ctx) => {
+            const total = ctx.chart.data.datasets[0].data.reduce((a,b)=>a+b,0) || 1;
+            const pct = Math.round((value / total) * 100);
+            return String(pct) + '%';
+          },
+          anchor: 'center',
+          align: 'center'
         },
         title: {
           display: true,
           text: 'Sales Share by Channel',
           font: { size: 18, weight: 'bold' }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const ch = context.label || '';
+              const val = Number(context.raw) || 0;
+              const total = context.chart.data.datasets[0].data.reduce((a,b)=>a+b,0) || 1;
+              const share = Math.round((val / total) * 100);
+              // format Indian rupee with commas
+              const rupees = val.toLocaleString('en-IN', {maximumFractionDigits: 0});
+              return `${ch} — ₹${rupees} (${share}%)`;
+            }
+          }
         }
       }
     },
@@ -2259,40 +2301,32 @@ async function renderSalesShare() {
   document.getElementById("salesShareStatus").innerText = "";
 }
 
-// 🔹 Default Date = Today
+// 🔹 Default Date = Yesterday + Auto Load
 document.addEventListener("DOMContentLoaded", () => {
-  const today = new Date();
-  const todayStr = today.toISOString().split("T")[0];
-  document.getElementById("shareStart").value = todayStr;
-  document.getElementById("shareEnd").value = todayStr;
-  renderSalesShare();
-});
-
-  document.addEventListener("DOMContentLoaded", () => {
-  // ✅ Auto-set both dates to yesterday
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
-
   const yStr = yesterday.toISOString().slice(0, 10);
+
   const sEl = document.getElementById("shareStart");
   const eEl = document.getElementById("shareEnd");
 
   if (sEl && eEl) {
     sEl.value = yStr;
     eEl.value = yStr;
-    // ✅ Automatically load chart for yesterday
-    loadSalesShare();
+    renderSalesShare();
   }
 });
-
 </script>
+
 
 
 
 
 </body>
 </html>
+
+
 
 
 
