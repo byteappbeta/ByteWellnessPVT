@@ -109,38 +109,6 @@ html, body {
   overflow-x: hidden !important;
 }
 
-    /* ===== Responsive Pie Chart Fix ===== */
-#salesShareChart {
-  width: 100% !important;
-  max-width: 600px;
-  height: auto !important;
-  aspect-ratio: 1 / 1;
-}
-
-@media (max-width: 768px) {
-  #salesShareChart {
-    max-width: 320px;
-  }
-}
-    /* ===== PIE CHART RESPONSIVE FIX ===== */
-#salesShareChart {
-  width: 90%;
-  max-width: 600px;
-  height: 400px;
-  margin: 40px auto;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-@media (max-width: 768px) {
-  #salesShareChart {
-    height: 300px;
-    max-width: 95%;
-    margin-top: 20px;
-  }
-}
-
 
     
   </style>
@@ -224,16 +192,15 @@ html, body {
     <button class="btn" onclick="renderSalesShare()">Apply</button>
   </div>
 
- <!-- ◆ Chart & Legend -->
-<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; margin-top:30px;">
-  <div style="width:90%; max-width:600px; position:relative;">
-    <canvas id="salesShareChart" style="width:100%; height:auto; aspect-ratio:1/1;"></canvas>
+  <!-- 🔹 Chart & Legend -->
+  <div style="display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:40px; margin-top:20px;">
+    <canvas id="salesShareChart" style="width:380px; height:380px;"></canvas>
+    <div id="salesShareLegend" style="font-weight:600; font-size:16px;"></div>
   </div>
-  <div id="salesShareLegend" style="font-weight:600; font-size:16px; margin-top:20px; text-align:center;"></div>
-</div>
 
-<p id="salesShareStatus" style="text-align:center; font-weight:600; margin-top:20px;"></p>
-<button class="btn" style="margin-top:25px;" onclick="showSection('sales')">Back</button>
+  <p id="salesShareStatus" style="text-align:center; font-weight:600; margin-top:20px;"></p>
+  <button class="btn" style="margin-top:30px;" onclick="showSection('sales')">Back</button>
+</div>
 
 
 <!-- BLINKIT SALES -->
@@ -2257,17 +2224,6 @@ async function renderSalesShare() {
   }).join("");
   document.getElementById("salesShareLegend").innerHTML = legendHTML;
 
-  const options = {
-  title: 'Sales Share by Channel',
-  pieHole: 0,
-  pieSliceText: 'percentage',
-  pieSliceTextStyle: { fontSize: 16, color: '#fff', fontWeight: 'bold' },
-  chartArea: { width: '90%', height: '80%' },
-  legend: { position: 'right', textStyle: { fontSize: 14 } },
-  pieStartAngle: 100,
-};
-
-
   const ctx = document.getElementById("salesShareChart").getContext("2d");
   if (salesChart) salesChart.destroy();
 
@@ -2337,8 +2293,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
-
-
 
 
 
