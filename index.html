@@ -2228,21 +2228,18 @@ async function renderSalesShare() {
   // 🔹 Format number with Indian commas
   const formatINR = n => n.toLocaleString('en-IN');
 
- // 🔹 Build legend with gross + share (no decimals)
-let legendHTML = "";
-const formatINR = n => Math.round(n).toLocaleString('en-IN'); // ✅ force integer only
-
-for (const [channel, value] of Object.entries(totals)) {
-  const share = Math.round((value / totalSum) * 100);
-  const color = chartColors[channel];
-  legendHTML += `
-    <div style="margin-bottom:8px; font-weight:600;">
-      <span style="display:inline-block;width:16px;height:16px;background:${color};border-radius:3px;margin-right:8px;"></span>
-      ${channel} — ₹${formatINR(value)} (${share}%)
-    </div>`;
-}
-
-document.getElementById("salesShareLegend").innerHTML = legendHTML;
+  // 🔹 Build legend with gross + share
+  let legendHTML = "";
+  for (const [channel, value] of Object.entries(totals)) {
+    const share = Math.round((value / totalSum) * 100);
+    const color = chartColors[channel];
+    legendHTML += `
+      <div style="margin-bottom:8px; font-weight:600;">
+        <span style="display:inline-block;width:16px;height:16px;background:${color};border-radius:3px;margin-right:8px;"></span>
+        ${channel} — ₹${formatINR(value)} (${share}%)
+      </div>`;
+  }
+  document.getElementById("salesShareLegend").innerHTML = legendHTML;
 
   const ctx = document.getElementById("salesShareChart").getContext("2d");
     // destroy old chart if present
@@ -2325,73 +2322,4 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
