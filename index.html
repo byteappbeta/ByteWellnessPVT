@@ -181,17 +181,25 @@ html, body {
   <button class="btn" onclick="showSection('sales')">Back</button>
 </div>
 
-<!-- SALES SHARE (PIE CHART DASHBOARD) -->
+<!-- 🥧 TOTAL SALES & SHARE SECTION -->
 <div class="container hidden" id="salesShare">
   <h2>Total Sales & Share</h2>
+
+  <!-- 🔹 Date Range Filter -->
   <div class="filters">
     From: <input type="date" id="shareStart">
     To: <input type="date" id="shareEnd">
     <button class="btn" onclick="renderSalesShare()">Apply</button>
   </div>
-  <p id="salesShareStatus" style="text-align:center; font-weight:600; margin-top:10px;">Loading...</p>
-  <canvas id="salesShareChart" style="max-width:700px; margin:30px auto; display:block;"></canvas>
-  <button class="btn" onclick="showSection('sales')">Back</button>
+
+  <!-- 🔹 Chart & Legend -->
+  <div style="display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:40px; margin-top:20px;">
+    <canvas id="salesShareChart" style="width:380px; height:380px;"></canvas>
+    <div id="salesShareLegend" style="font-weight:600; font-size:16px;"></div>
+  </div>
+
+  <p id="salesShareStatus" style="text-align:center; font-weight:600; margin-top:20px;"></p>
+  <button class="btn" style="margin-top:30px;" onclick="showSection('sales')">Back</button>
 </div>
 
 
@@ -2072,145 +2080,191 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
-<!-- ===== TOTAL SALES & SHARE (PIE CHART) ===== -->
+
+  
+  <!-- 🥧 TOTAL SALES & SHARE SECTION -->
+  <!-- Load Chart.js + Data Labels -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
 <script>
-const ctxColors = {
-  flipkart: '#2874F0',
-  amazon: '#FF9900',
-  blinkit: '#F7E415',
-  shopify: '#96BF48'
+const chartColors = {
+  Amazon: '#FF9900',
+  Flipkart: '#2874F0',
+  Shopify: '#96BF48',
+  Blinkit: '#F7E415'
 };
 
-// 🧭 Reuse existing API configs
-const SHARE_APIS = {
-  amazon: { id: '1e4Vdkw2Ms0dCxskAKbUfLk3ttqeFT_nbQDhsPtKWWhA', tab: 'sheet1' },
-  flipkart: { id: '1e98eoyoGOeEiQ3hFAKBON-VH85byuXV042vzqC8Yhkw', tab: 'SALES' },
-  shopify: { id: '1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJk', tab: 'Orders_API' },
-  blinkit: { id: '1LJ7H8Zwy8-mM_1K0TCdke-89qfK00yQAV04OtitC45Q', tab: 'sheet1' }
-};
-
-// 🧮 Date helpers
-function ymd(date){ return date.toISOString().slice(0,10); }
-function startOfDay(d){ const x=new Date(d);x.setHours(0,0,0,0);return x;}
-function endOfDay(d){ const x=new Date(d);x.setHours(23,59,59,999);return x;}
-function parseDate(val){
-  if(!val) return null;
-  const s=String(val).trim();
-  if(/^\d{4}-\d{2}-\d{2}/.test(s)){const [y,m,d]=s.substring(0,10).split('-');return new Date(+y,+m-1,+d);}
-  if(/^\d{2}[\/-]\d{2}[\/-]\d{4}$/.test(s)){const [d,m,y]=s.split(/[\/-]/);return new Date(+y,+m-1,+d);}
-  const d=new Date(s); return isNaN(d)?null:d;
-}
-
-// 🧾 Fetch values from Google Sheets
-async function fetchSheetValues(sheetId, tab){
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(tab)}!A1:Z?key=${API_KEY}`;
-  const res = await fetch(url);
-  const json = await res.json();
-  return json.values || [];
-}
-
-// 📊 Compute gross sales from each channel
-async function getGrossSales(channel, start, end){
-  try {
-    const {id, tab} = SHARE_APIS[channel];
-    const vals = await fetchSheetValues(id, tab);
-    if(vals.length < 2) return 0;
-
-    const headers = vals[0].map(h => (h||"").toLowerCase().trim());
-    let dateIdx = headers.findIndex(h => ["date","ordered on","purchase-date"].includes(h));
-    let amtIdx  = headers.findIndex(h => ["sales(-gst)","invoice amount","item-price","gross"].includes(h));
-    if(dateIdx===-1 || amtIdx===-1) return 0;
-
-    let total=0;
-    for(let i=1;i<vals.length;i++){
-      const row = vals[i];
-      const d = parseDate(row[dateIdx]);
-      if(!d) continue;
-      if(d<start || d>end) continue;
-      const v = parseFloat((row[amtIdx]||"0").toString().replace(/,/g,""));
-      if(!isNaN(v)) total += v;
+// 🔹 Fetch & Calculate Gross per Channel
+async function fetchSalesData(channel, start, end) {
+  const sheets = {
+    Amazon: {
+      id: '1e4Vdkw2Ms0dCxskAKbUfLk3ttqeFT_nbQDhsPtKWWhA',
+      tab: 'sheet1',
+      dateCol: 'purchase-date',
+      valueCols: ['item-price', 'item-promotion-discount']
+    },
+    Flipkart: {
+      id: '1e98eoyoGOeEiQ3hFAKBON-VH85byuXV042vzqC8Yhkw',
+      tab: 'SALES',
+      dateCol: 'ordered on',
+      valueCols: ['invoice amount']
+    },
+    Shopify: {
+      id: '1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJk',
+      tab: 'Orders_API',
+      dateCol: 'date',
+      valueCols: ['order total']
+    },
+    Blinkit: {
+      id: '1LJ7H8Zwy8-mM_1K0TCdke-89qfK00yQAV04OtitC45Q',
+      tab: 'sheet1',
+      dateCol: 'date',
+      valueCols: ['sales']
     }
-    return total;
-  } catch(err){
-    console.warn(channel,"fetch error",err);
+  }[channel];
+
+  try {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheets.id}/values/${encodeURIComponent(sheets.tab)}!A1:Z?key=${API_KEY}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const vals = data.values || [];
+    if (vals.length < 2) return 0;
+
+    const headers = vals[0].map(h => (h || "").toLowerCase().trim());
+    const dateIdx = headers.indexOf(sheets.dateCol);
+    if (dateIdx === -1) return 0;
+
+    let gross = 0;
+
+    for (let i = 1; i < vals.length; i++) {
+      const d = parseDate(vals[i][dateIdx]);
+      if (!d || d < start || d > end) continue;
+
+      if (channel === 'Amazon') {
+        const priceIdx = headers.indexOf('item-price');
+        const discountIdx = headers.indexOf('item-promotion-discount');
+        const price = parseFloat((vals[i][priceIdx] || '0').replace(/,/g, '')) || 0;
+        const discount = parseFloat((vals[i][discountIdx] || '0').replace(/,/g, '')) || 0;
+        gross += (price - discount);
+      }
+      else if (channel === 'Flipkart') {
+        const valIdx = headers.indexOf('invoice amount');
+        const val = parseFloat((vals[i][valIdx] || '0').replace(/,/g, ''));
+        if (!isNaN(val)) gross += val;
+      }
+      else if (channel === 'Shopify') {
+        const valIdx = headers.indexOf('order total');
+        const val = parseFloat((vals[i][valIdx] || '0').replace(/,/g, ''));
+        if (!isNaN(val)) gross += val;
+      }
+      else if (channel === 'Blinkit') {
+        const valIdx = headers.indexOf('sales');
+        const val = parseFloat((vals[i][valIdx] || '0').replace(/,/g, ''));
+        if (!isNaN(val)) gross += val;
+      }
+    }
+    return gross;
+  } catch (err) {
+    console.warn(`Error fetching ${channel}:`, err);
     return 0;
   }
 }
 
-// 🥧 Render Pie Chart
+// 🔹 Parse Date (supports dd-mm-yyyy, yyyy-mm-dd, etc.)
+function parseDate(v) {
+  if (!v) return null;
+  const s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(s);
+  if (/^\d{2}[\/-]\d{2}[\/-]\d{4}$/.test(s)) {
+    const [d, m, y] = s.split(/[\/-]/);
+    return new Date(`${y}-${m}-${d}`);
+  }
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
 let salesChart;
-async function renderSalesShare(){
+
+// 🔹 Render Chart
+async function renderSalesShare() {
   const sVal = document.getElementById("shareStart").value;
   const eVal = document.getElementById("shareEnd").value;
-  if(!sVal || !eVal){ alert("Select start and end dates."); return; }
+  if (!sVal || !eVal) return alert("Select both From and To dates");
 
-  const start = startOfDay(new Date(sVal));
-  const end = endOfDay(new Date(eVal));
+  const start = new Date(sVal);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(eVal);
+  end.setHours(23, 59, 59, 999);
 
-  document.getElementById("salesShareStatus").innerText = "Fetching sales data...";
-  
-  const [amz, fk, shp, blk] = await Promise.all([
-    getGrossSales("amazon", start, end),
-    getGrossSales("flipkart", start, end),
-    getGrossSales("shopify", start, end),
-    getGrossSales("blinkit", start, end)
+  document.getElementById("salesShareStatus").innerText = "Fetching data...";
+
+  const [amazon, flipkart, shopify, blinkit] = await Promise.all([
+    fetchSalesData("Amazon", start, end),
+    fetchSalesData("Flipkart", start, end),
+    fetchSalesData("Shopify", start, end),
+    fetchSalesData("Blinkit", start, end)
   ]);
 
-  const totals = {Amazon: amz, Flipkart: fk, Shopify: shp, Blinkit: blk};
-  const totalSum = Object.values(totals).reduce((a,b)=>a+b,0);
-  if(totalSum === 0){
-    document.getElementById("salesShareStatus").innerText = "No data found for this range.";
+  const totals = { Amazon: amazon, Flipkart: flipkart, Shopify: shopify, Blinkit: blinkit };
+  const totalSum = Object.values(totals).reduce((a, b) => a + b, 0);
+
+  if (totalSum === 0) {
+    document.getElementById("salesShareStatus").innerText = "No sales data for this date range.";
     return;
   }
 
-  const labels = Object.keys(totals);
-  const data = Object.values(totals);
-  const colors = [ctxColors.amazon, ctxColors.flipkart, ctxColors.shopify, ctxColors.blinkit];
-  const percents = data.map(v=>((v/totalSum)*100).toFixed(1));
-
-  document.getElementById("salesShareStatus").innerText = "";
+  // 🔹 Legend with Gross Values
+  const legendHTML = Object.entries(totals).map(([k, v]) => {
+    const color = chartColors[k];
+    return `<div style="margin-bottom:8px;">
+      <span style="display:inline-block;width:16px;height:16px;background:${color};border-radius:3px;margin-right:8px;"></span>
+      ${k} — ₹${v.toLocaleString('en-IN')}
+    </div>`;
+  }).join("");
+  document.getElementById("salesShareLegend").innerHTML = legendHTML;
 
   const ctx = document.getElementById("salesShareChart").getContext("2d");
-  if(salesChart) salesChart.destroy();
+  if (salesChart) salesChart.destroy();
 
   salesChart = new Chart(ctx, {
     type: 'pie',
     data: {
-      labels: labels.map((l,i)=>`${l} (₹${data[i].toLocaleString('en-IN')})`),
+      labels: Object.keys(totals),
       datasets: [{
-        data: data,
-        backgroundColor: colors,
-        borderWidth: 1
+        data: Object.values(totals),
+        backgroundColor: Object.keys(totals).map(k => chartColors[k]),
+        borderWidth: 2
       }]
     },
     options: {
       responsive: true,
       plugins: {
-        legend: {
-          position: 'right',
-          labels: { font: { size: 14 } }
-        },
+        legend: { display: false },
         datalabels: {
-          color: '#000',
-          font: { weight: '700', size: 14 },
-          formatter: (v)=> ((v/totalSum)*100).toFixed(1)+'%'
+          color: '#fff',
+          font: { weight: 'bold', size: 14 },
+          formatter: (v, ctx) => ((v / totalSum) * 100).toFixed(0) + '%'
         },
-        title: { display: true, text: 'Sales Share by Channel', font: { size: 18, weight: 'bold' } }
+        title: {
+          display: true,
+          text: 'Sales Share by Channel',
+          font: { size: 18, weight: 'bold' }
+        }
       }
     },
     plugins: [ChartDataLabels]
   });
+
+  document.getElementById("salesShareStatus").innerText = "";
 }
 
-// 🕓 Default: yesterday’s data
-document.addEventListener("DOMContentLoaded", ()=>{
-  const t = new Date();
-  t.setDate(t.getDate()-1);
-  const yStr = ymd(t);
-  document.getElementById("shareStart").value = yStr;
-  document.getElementById("shareEnd").value = yStr;
+// 🔹 Default Date = Today
+document.addEventListener("DOMContentLoaded", () => {
+  const today = new Date();
+  const todayStr = today.toISOString().split("T")[0];
+  document.getElementById("shareStart").value = todayStr;
+  document.getElementById("shareEnd").value = todayStr;
   renderSalesShare();
 });
 </script>
@@ -2218,9 +2272,9 @@ document.addEventListener("DOMContentLoaded", ()=>{
 
 
 
-
 </body>
 </html>
+
 
 
 
