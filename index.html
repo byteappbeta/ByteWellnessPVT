@@ -109,6 +109,33 @@ html, body {
   overflow-x: hidden !important;
 }
 
+    /* Responsive chart sizing */
+#salesShareChart {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+@media (max-width: 768px) {
+  #salesShareChart {
+    width: 260px !important;
+    height: 260px !important;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1200px) {
+  #salesShareChart {
+    width: 320px !important;
+    height: 320px !important;
+  }
+}
+
+@media (min-width: 1201px) {
+  #salesShareChart {
+    width: 360px !important;
+    height: 360px !important;
+  }
+}
+
 
     
   </style>
@@ -192,15 +219,16 @@ html, body {
     <button class="btn" onclick="renderSalesShare()">Apply</button>
   </div>
 
-  <!-- 🔹 Chart & Legend -->
-  <div style="display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:40px; margin-top:20px;">
-    <canvas id="salesShareChart" style="width:380px; height:380px;"></canvas>
-    <div id="salesShareLegend" style="font-weight:600; font-size:16px;"></div>
+<!-- 🔹 Chart & Legend -->
+<div style="display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:40px; margin-top:20px;">
+  <div style="width:320px; height:320px; display:flex; align-items:center; justify-content:center;">
+    <canvas id="salesShareChart"></canvas>
   </div>
-
-  <p id="salesShareStatus" style="text-align:center; font-weight:600; margin-top:20px;"></p>
-  <button class="btn" style="margin-top:30px;" onclick="showSection('sales')">Back</button>
+  <div id="salesShareLegend" style="font-weight:600; font-size:16px;"></div>
 </div>
+
+<p id="salesShareStatus" style="text-align:center; font-weight:600; margin-top:20px;"></p>
+<button class="btn" style="margin-top:30px;" onclick="showSection('sales')">Back</button>
 
 
 <!-- BLINKIT SALES -->
@@ -2279,13 +2307,13 @@ async function renderSalesShare() {
     },
     options: {
       responsive: true,
-      maintainAspectRatio: false, // 👈 important
+      maintainAspectRatio: true, // 👈 important
       layout: { padding: 10 },
       plugins: {
         legend: { display: false },
         datalabels: {
           color: '#fff',
-          font: { weight: 'bold', size: 13 },
+          font: { weight: 'bold', size: 20 },
           formatter: (v, ctx) => ((v / totalSum) * 100).toFixed(0) + '%'
         },
         title: {
@@ -2321,6 +2349,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
