@@ -2131,8 +2131,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
   
-  <!-- 🥧 TOTAL SALES & SHARE SECTION -->
-  <!-- Load Chart.js + Data Labels -->
+ <!-- 🥧 TOTAL SALES & SHARE SECTION -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
@@ -2144,32 +2143,27 @@ const chartColors = {
   Blinkit: '#F7E415'
 };
 
-// 🔹 Fetch & Calculate Gross per Channel
 async function fetchSalesData(channel, start, end) {
   const sheets = {
     Amazon: {
       id: '1e4Vdkw2Ms0dCxskAKbUfLk3ttqeFT_nbQDhsPtKWWhA',
       tab: 'Orders',
-      dateCol: 'purchase-date',
-      valueCols: ['item-price', 'item-promotion-discount']
+      dateCol: 'purchase-date'
     },
     Flipkart: {
       id: '1e98eoyoGOeEiQ3hFAKBON-VH85byuXV042vzqC8Yhkw',
       tab: 'SALES',
-      dateCol: 'ordered on',
-      valueCols: ['invoice amount']
+      dateCol: 'ordered on'
     },
     Shopify: {
-     id: '1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJk',
-     tab: 'Orders_API',
-     dateCol: 'date',
-     valueCols: ['total price (order)'] 
+      id: '1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJk',
+      tab: 'Orders_API',
+      dateCol: 'date'
     },
     Blinkit: {
       id: '1LJ7H8Zwy8-mM_1K0TCdke-89qfK00yQAV04OtitC45Q',
       tab: 'sheet1',
-      dateCol: 'date',
-      valueCols: ['sales']
+      dateCol: 'date'
     }
   }[channel];
 
@@ -2190,27 +2184,25 @@ async function fetchSalesData(channel, start, end) {
       const d = parseDate(vals[i][dateIdx]);
       if (!d || d < start || d > end) continue;
 
+      // ---- Parse values per channel ----
       if (channel === 'Amazon') {
         const priceIdx = headers.indexOf('item-price');
         const discountIdx = headers.indexOf('item-promotion-discount');
         const price = parseFloat((vals[i][priceIdx] || '0').replace(/,/g, '')) || 0;
         const discount = parseFloat((vals[i][discountIdx] || '0').replace(/,/g, '')) || 0;
         gross += (price - discount);
-      }
-      else if (channel === 'Flipkart') {
-        const valIdx = headers.indexOf('invoice amount');
-        const val = parseFloat((vals[i][valIdx] || '0').replace(/,/g, ''));
-        if (!isNaN(val)) gross += val;
-      }
-      else if (channel === 'Shopify') {
-        const valIdx = headers.indexOf('total price (order)');
-        const val = parseFloat((vals[i][valIdx] || '0').replace(/,/g, '')) || 0;
-        if (!isNaN(val)) gross += val;
-      }
-      else if (channel === 'Blinkit') {
-        const valIdx = headers.indexOf('sales');
-        const val = parseFloat((vals[i][valIdx] || '0').replace(/,/g, ''));
-        if (!isNaN(val)) gross += val;
+      } else if (channel === 'Flipkart') {
+        const idx = headers.indexOf('invoice amount');
+        const val = parseFloat((vals[i][idx] || '0').replace(/,/g, '')) || 0;
+        gross += val;
+      } else if (channel === 'Shopify') {
+        const idx = headers.indexOf('total price (order)');
+        const val = parseFloat((vals[i][idx] || '0').replace(/,/g, '')) || 0;
+        gross += val;
+      } else if (channel === 'Blinkit') {
+        const idx = headers.indexOf('sales');
+        const val = parseFloat((vals[i][idx] || '0').replace(/,/g, '')) || 0;
+        gross += val;
       }
     }
     return gross;
@@ -2220,7 +2212,7 @@ async function fetchSalesData(channel, start, end) {
   }
 }
 
-// 🔹 Parse Date (supports dd-mm-yyyy, yyyy-mm-dd, etc.)
+// 🗓️ Parse different date formats
 function parseDate(v) {
   if (!v) return null;
   const s = String(v).trim();
@@ -2235,7 +2227,6 @@ function parseDate(v) {
 
 let salesChart;
 
-// 🔹 Render Chart
 async function renderSalesShare() {
   const sVal = document.getElementById("shareStart").value;
   const eVal = document.getElementById("shareEnd").value;
@@ -2263,7 +2254,6 @@ async function renderSalesShare() {
     return;
   }
 
-  // 🔹 Legend with Gross Values
   const legendHTML = Object.entries(totals).map(([k, v]) => {
     const color = chartColors[k];
     return `<div style="margin-bottom:8px;">
@@ -2276,6 +2266,7 @@ async function renderSalesShare() {
   const ctx = document.getElementById("salesShareChart").getContext("2d");
   if (salesChart) salesChart.destroy();
 
+  // 🔹 Chart size control
   salesChart = new Chart(ctx, {
     type: 'pie',
     data: {
@@ -2288,11 +2279,13 @@ async function renderSalesShare() {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false, // 👈 important
+      layout: { padding: 10 },
       plugins: {
         legend: { display: false },
         datalabels: {
           color: '#fff',
-          font: { weight: 'bold', size: 14 },
+          font: { weight: 'bold', size: 13 },
           formatter: (v, ctx) => ((v / totalSum) * 100).toFixed(0) + '%'
         },
         title: {
@@ -2308,40 +2301,27 @@ async function renderSalesShare() {
   document.getElementById("salesShareStatus").innerText = "";
 }
 
-// 🔹 Default Date = Today
+// 🗓️ Default = Yesterday, but don’t render chart
 document.addEventListener("DOMContentLoaded", () => {
-  const today = new Date();
-  const todayStr = today.toISOString().split("T")[0];
-  document.getElementById("shareStart").value = todayStr;
-  document.getElementById("shareEnd").value = todayStr;
-  renderSalesShare();
-});
-
-  document.addEventListener("DOMContentLoaded", () => {
-  // ✅ Auto-set both dates to yesterday
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
 
-  const yStr = yesterday.toISOString().slice(0, 10);
-  const sEl = document.getElementById("shareStart");
-  const eEl = document.getElementById("shareEnd");
+  const yStr = yesterday.toISOString().split("T")[0];
+  document.getElementById("shareStart").value = yStr;
+  document.getElementById("shareEnd").value = yStr;
 
-  if (sEl && eEl) {
-    sEl.value = yStr;
-    eEl.value = yStr;
-    // ✅ Automatically load chart for yesterday
-    loadSalesShare();
-  }
+  // ❌ no auto render — chart only appears after user clicks Apply
 });
-
 </script>
+
 
 
 
 
 </body>
 </html>
+
 
 
 
