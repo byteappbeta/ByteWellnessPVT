@@ -430,7 +430,7 @@ async function showWarehouse(name) {
   });
 } // ✅ clean ending
 
-  /* ====== ALL-IN-ONE WAREHOUSE (SUMMARY VIEW + EXPORT + SKU SUBSTITUTION) ====== */
+/* ====== ALL-IN-ONE WAREHOUSE (SUMMARY VIEW + EXPORT + SKU SUBSTITUTION) ====== */
 async function showAllWarehouses() {
   showSection("warehouse");
   const titleEl = document.getElementById("warehouseName");
@@ -441,15 +441,29 @@ async function showAllWarehouses() {
   const thead = table.querySelector("thead");
   const tbody = table.querySelector("tbody");
 
-  // Add export button (only once)
+  // 🧩 Export button + format note
   if (!document.getElementById("exportAllBtn")) {
+    const wrapper = document.createElement("div");
+    wrapper.style.display = "flex";
+    wrapper.style.alignItems = "center";
+    wrapper.style.gap = "10px";
+    wrapper.style.marginBottom = "10px";
+
     const btn = document.createElement("button");
     btn.innerText = "Export CSV";
     btn.id = "exportAllBtn";
     btn.className = "export-btn";
-    btn.style.marginBottom = "10px";
     btn.onclick = exportAllWarehouses;
-    syncedEl.insertAdjacentElement("afterend", btn);
+
+    const note = document.createElement("span");
+    note.innerText = "Format: Inventory[Last 30 Days Sale](Days to Stockout)";
+    note.style.fontSize = "12px";
+    note.style.color = "#555";
+    note.style.fontStyle = "italic";
+
+    wrapper.appendChild(btn);
+    wrapper.appendChild(note);
+    syncedEl.insertAdjacentElement("afterend", wrapper);
   }
 
   thead.innerHTML = "";
@@ -469,7 +483,9 @@ async function showAllWarehouses() {
     const skuIdx = amzHdrs.indexOf("sku");
     const availIdx = amzHdrs.indexOf("available");
     const daysIdx = amzHdrs.indexOf("days to stockout");
+    const saleIdx = amzHdrs.indexOf("last 30 days sale");
     const syncIdx = amzHdrs.indexOf("synced at");
+
     let lastSynced = "";
     if (syncIdx !== -1 && amzRes.data.length > 0) {
       const raw = (amzRes.data[0][syncIdx] || "").trim();
@@ -494,7 +510,8 @@ async function showAllWarehouses() {
       if (!sku) return;
       amzMap.set(sku, {
         available: r[availIdx] || "",
-        days: r[daysIdx] || ""
+        days: r[daysIdx] || "",
+        last30: r[saleIdx] || ""
       });
     });
 
@@ -518,12 +535,14 @@ async function showAllWarehouses() {
         const skuI = hdrs.indexOf("sku");
         const availI = hdrs.indexOf("available");
         const daysI = hdrs.indexOf("days to stockout");
+        const saleI = hdrs.indexOf("last 30 days sale");
         res.data.forEach(r => {
           const sku = (r[skuI] || "").trim();
           if (!sku) return;
           map.set(sku, {
             available: r[availI] || "",
-            days: r[daysI] || ""
+            days: r[daysI] || "",
+            last30: r[saleI] || ""
           });
         });
       }
@@ -537,9 +556,7 @@ async function showAllWarehouses() {
     /* 4️⃣ Prepare final table rows */
     const rows = [];
     amzMap.forEach((amzVal, sku) => {
-      // --- Custom substitution logic ---
-      const lookupSku =
-        sku === "BF-NS-TRS" ? "NSTRIP-CLR2" : sku;
+      const lookupSku = sku === "BF-NS-TRS" ? "NSTRIP-CLR2" : sku;
 
       const master = masterMap.get(lookupSku) || {};
       const blr = blrMap.get(lookupSku) || {};
@@ -549,18 +566,17 @@ async function showAllWarehouses() {
         master.labelled || master.nonlabelled
           ? `${master.labelled || 0}(L)/${master.nonlabelled || 0}(NL)`
           : "-";
-      const blrStr =
-        blr.available || blr.days
-          ? `${blr.available || 0}(${blr.days || "-"})`
-          : "-";
-      const mumStr =
-        mum.available || mum.days
-          ? `${mum.available || 0}(${mum.days || "-"})`
-          : "-";
-      const amzStr =
-        amzVal.available || amzVal.days
-          ? `${amzVal.available || 0}(${amzVal.days || "-"})`
-          : "-";
+
+      function format(val) {
+        if (!val.available && !val.days) return "-";
+        if (val.last30)
+          return `${val.available || 0}[${val.last30 || 0}](${val.days || "-"})`;
+        return `${val.available || 0}(${val.days || "-"})`;
+      }
+
+      const blrStr = format(blr);
+      const mumStr = format(mum);
+      const amzStr = format(amzVal);
 
       rows.push({
         sku,
@@ -612,6 +628,7 @@ async function showAllWarehouses() {
     document.getElementById("lastSynced").innerText = "LAST SYNCED: N/A";
   }
 }
+
 
 /* ===== EXPORT FUNCTION (with synced date) ===== */
 function exportAllWarehouses() {
@@ -2293,6 +2310,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
