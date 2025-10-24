@@ -432,7 +432,13 @@ async function showWarehouse(name) {
 
 /* ====== ALL-IN-ONE WAREHOUSE (SUMMARY VIEW + EXPORT + SKU SUBSTITUTION) ====== */
 async function showAllWarehouses() {
+  // 🧹 Remove the format/export controls if user switches away from All Warehouses
+function removeWarehouseControls() {
+  const controls = document.getElementById("warehouseControls");
+  if (controls) controls.remove();
+}
   showSection("warehouse");
+  removeWarehouseControls();
   const titleEl = document.getElementById("warehouseName");
   const syncedEl = document.getElementById("lastSynced");
   titleEl.innerText = "All Warehouses";
@@ -442,8 +448,8 @@ async function showAllWarehouses() {
   const tbody = table.querySelector("tbody");
 
 // 🧩 Export button + format note (only show on All Warehouses)
-const oldWrapper = document.getElementById("warehouseControls");
-if (oldWrapper) oldWrapper.remove(); // ✅ remove any old instance
+let oldWrapper = document.getElementById("warehouseControls");
+if (oldWrapper) oldWrapper.remove(); // ✅ always reset before adding a new one
 
 const wrapper = document.createElement("div");
 wrapper.id = "warehouseControls";
@@ -468,6 +474,7 @@ note.style.fontStyle = "italic";
 wrapper.appendChild(btn);
 wrapper.appendChild(note);
 syncedEl.insertAdjacentElement("afterend", wrapper);
+
 
 
   thead.innerHTML = "";
@@ -2314,6 +2321,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
