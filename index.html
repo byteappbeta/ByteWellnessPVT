@@ -339,6 +339,12 @@ const WAREHOUSE_SHEET_ID = "12Hx1lGMB8dPHND7u3vqbN2itq3QHzBCIiBMkRRWbk6Y";
 const BLINKIT_SHEET_ID   = "1LJ7H8Zwy8-mM_1K0TCdke-89qfK00yQAV04OtitC45Q";
 const BLINKIT_SHEET = "sheet1"; // exact tab name inside Blinkit sheet
 
+  // 🧹 Global helper: remove the All Warehouses controls if present
+function removeWarehouseControls() {
+  const controls = document.getElementById("warehouseControls");
+  if (controls) controls.remove();
+}
+
 /* ====== INVENTORY ====== */
 const warehouseSheets = {
   "Master": "Master",
@@ -360,6 +366,7 @@ async function fetchWarehouseData(sheetName) {
 }
 
 async function showWarehouse(name) {
+  removeWarehouseControls();
   showSection('warehouse');
   const sheetName = warehouseSheets[name];
   const { headers, data } = await fetchWarehouseData(sheetName);
@@ -432,13 +439,8 @@ async function showWarehouse(name) {
 
 /* ====== ALL-IN-ONE WAREHOUSE (SUMMARY VIEW + EXPORT + SKU SUBSTITUTION) ====== */
 async function showAllWarehouses() {
-  // 🧹 Remove the format/export controls if user switches away from All Warehouses
-function removeWarehouseControls() {
-  const controls = document.getElementById("warehouseControls");
-  if (controls) controls.remove();
-}
+  removeWarehouseControls(); // ✅ use the global cleanup before showing page
   showSection("warehouse");
-  removeWarehouseControls();
   const titleEl = document.getElementById("warehouseName");
   const syncedEl = document.getElementById("lastSynced");
   titleEl.innerText = "All Warehouses";
@@ -825,8 +827,27 @@ document.addEventListener("DOMContentLoaded", ()=>{
   }
 });
 /* ====== NAVIGATION ====== */
-const SECTIONS=["home","inventory","warehouse","sales","salesOverview","salesShare","blinkit","amazonSales","flipkartSales","shopifySalesSection"];
-function showSection(id){ SECTIONS.forEach(s=>document.getElementById(s).classList.add("hidden")); document.getElementById(id).classList.remove("hidden"); }
+const SECTIONS = [
+  "home",
+  "inventory",
+  "warehouse",
+  "sales",
+  "salesOverview",
+  "salesShare",
+  "blinkit",
+  "amazonSales",
+  "flipkartSales",
+  "shopifySalesSection"
+];
+
+function showSection(id) {
+  // 🧹 Always remove All Warehouses controls when switching sections
+  removeWarehouseControls();
+
+  SECTIONS.forEach(s => document.getElementById(s).classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+}
+  
 </script>
 
   <script>
@@ -2321,6 +2342,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
