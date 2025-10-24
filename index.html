@@ -2314,8 +2314,8 @@ const legendHTML = Object.entries(totals).map(([k, v]) => {
       plugins: {
         legend: { display: false },
         datalabels: {
-          color: '#fff',
-          font: { weight: 'bold', size: 14 },
+          color: '#000000',
+          font: { weight: 'bold', size: 13 },
           formatter: (v, ctx) => Math.round((v / totalSum) * 100) + '%'
         },
         title: {
@@ -2351,6 +2351,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
