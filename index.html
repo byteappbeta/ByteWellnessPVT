@@ -441,31 +441,33 @@ async function showAllWarehouses() {
   const thead = table.querySelector("thead");
   const tbody = table.querySelector("tbody");
 
-  // 🧩 Export button + format note
-if (!document.getElementById("exportAllBtn")) {
-  const wrapper = document.createElement("div");
-  wrapper.style.display = "flex";
-  wrapper.style.alignItems = "center";
-  wrapper.style.justifyContent = "center"; // ✅ center the content
-  wrapper.style.gap = "10px";
-  wrapper.style.marginBottom = "10px";
+// 🧩 Export button + format note (only show on All Warehouses)
+const oldWrapper = document.getElementById("warehouseControls");
+if (oldWrapper) oldWrapper.remove(); // ✅ remove any old instance
 
-  const btn = document.createElement("button");
-  btn.innerText = "Export CSV";
-  btn.id = "exportAllBtn";
-  btn.className = "export-btn";
-  btn.onclick = exportAllWarehouses;
+const wrapper = document.createElement("div");
+wrapper.id = "warehouseControls";
+wrapper.style.display = "flex";
+wrapper.style.alignItems = "center";
+wrapper.style.justifyContent = "center";
+wrapper.style.gap = "10px";
+wrapper.style.marginBottom = "10px";
 
-  const note = document.createElement("span");
-  note.innerText = "Format: Inventory [Last 30 Days Sale] (Days to Stockout)";
-  note.style.fontSize = "16px";
-  note.style.color = "#555";
-  note.style.fontStyle = "italic";
+const btn = document.createElement("button");
+btn.innerText = "Export CSV";
+btn.id = "exportAllBtn";
+btn.className = "export-btn";
+btn.onclick = exportAllWarehouses;
 
-  wrapper.appendChild(btn);
-  wrapper.appendChild(note);
-  syncedEl.insertAdjacentElement("afterend", wrapper);
-}
+const note = document.createElement("span");
+note.innerText = "Format: Inventory [Last 30 Days Sale] (Days to Stockout)";
+note.style.fontSize = "12px";
+note.style.color = "#555";
+note.style.fontStyle = "italic";
+
+wrapper.appendChild(btn);
+wrapper.appendChild(note);
+syncedEl.insertAdjacentElement("afterend", wrapper);
 
 
   thead.innerHTML = "";
@@ -2312,6 +2314,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
