@@ -2224,9 +2224,19 @@ async function fetchSalesData(channel, start, end) {
         const val = parseFloat((vals[i][idx] || '0').replace(/,/g, '')) || 0;
         gross += val;
       } else if (channel === 'Shopify') {
-        const idx = headers.indexOf('total price (order)');
-        const val = parseFloat((vals[i][idx] || '0').replace(/,/g, '')) || 0;
-        gross += val;
+  const orderIdx = headers.indexOf('order number');
+  const totalIdx = headers.indexOf('total price (order)');
+  const orderNo = (vals[i][orderIdx] || "").trim();
+
+  // ✅ Use a Set to ensure each order is counted only once
+  if (!window._countedShopifyOrders) window._countedShopifyOrders = new Set();
+
+  if (!window._countedShopifyOrders.has(orderNo)) {
+    const val = parseFloat((vals[i][totalIdx] || '0').replace(/,/g, '')) || 0;
+    gross += val;
+    window._countedShopifyOrders.add(orderNo);
+  }
+
       } else if (channel === 'Blinkit') {
         const idx = headers.indexOf('sales');
         const val = parseFloat((vals[i][idx] || '0').replace(/,/g, '')) || 0;
@@ -2259,6 +2269,8 @@ async function renderSalesShare() {
   const sVal = document.getElementById("shareStart").value;
   const eVal = document.getElementById("shareEnd").value;
   if (!sVal || !eVal) return alert("Select both From and To dates");
+
+  window._countedShopifyOrders = new Set();
 
   const start = new Date(sVal);
   start.setHours(0, 0, 0, 0);
@@ -2372,6 +2384,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
