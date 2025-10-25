@@ -2282,15 +2282,18 @@ async function renderSalesShare() {
     return;
   }
 
-// 🔹 Legend with Rounded Gross Values (no decimals)
+// 🔹 Legend with Rounded Gross Values + Total Sales
 const legendHTML = Object.entries(totals).map(([k, v]) => {
   const color = chartColors[k];
-  const roundedVal = Math.round(v); // 👈 Round to nearest whole number
+  const roundedVal = Math.round(v);
   return `<div style="margin-bottom:8px;">
-    <span style="display:inline-block;width:16px;height:16px;background:${color};border-radius:3px;margin-right:8px;"></span>
+    <span style="display:inline-block;width:16px;height:16px;background:${color};
+      border-radius:3px;margin-right:8px;"></span>
     ${k} — ₹${roundedVal.toLocaleString('en-IN')}
   </div>`;
-}).join("");
+}).join("") + `
+  <hr style="border:0;border-top:1px solid #ccc;margin:8px 0;">
+  <div style="font-weight:700;">Total — ₹${Math.round(totalSum).toLocaleString('en-IN')}</div>;
   document.getElementById("salesShareLegend").innerHTML = legendHTML;
 
   const ctx = document.getElementById("salesShareChart").getContext("2d");
@@ -2351,6 +2354,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
