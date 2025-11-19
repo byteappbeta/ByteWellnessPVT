@@ -170,6 +170,7 @@ html, body {
     <div class="card" onclick="showWarehouse('Mumbai')">Shiprocket - Mumbai</div>
     <div class="card" onclick="showWarehouse('Bangalore')">Shiprocket - Bangalore</div>
     <div class="card" onclick="showWarehouse('Amazon')">Amazon Warehouse</div>
+    <div class="card" onclick="showWarehouse('Blinkit')">Blinkit Warehouse</div>
     <div class="card" onclick="showAllWarehouses()">All Warehouses</div>
   </div>
   <button class="btn" onclick="showSection('home')">Back</button>
@@ -379,6 +380,7 @@ const warehouseSheets = {
   "Mumbai": "Mumbai",
   "Bangalore": "Bangalore",
   "Amazon": "Amazon"
+  "Blinkit": "Blinkit"
 };
 
 async function fetchWarehouseData(sheetName) {
@@ -396,66 +398,113 @@ async function fetchWarehouseData(sheetName) {
 async function showWarehouse(name) {
   removeWarehouseControls();
   showSection('warehouse');
+
   const sheetName = warehouseSheets[name];
   const { headers, data } = await fetchWarehouseData(sheetName);
-  const normHeaders = headers.map(h => (h || "").trim().toLowerCase());
 
-  // Update warehouse title
+  // normalize headers (trim + lowercase)
+  const normHeaders = headers.map(h => (h || "").toString().trim().toLowerCase());
+
+  // Update title
   document.getElementById("warehouseName").innerText = name + " Warehouse";
   const syncedElem = document.getElementById("lastSynced");
 
-  // Detect "Synced At" column
-  const syncedIndex = normHeaders.indexOf("synced at");
+  // Find synced column index: allow both "synced at" and "last updated"
+  let syncedIndex = normHeaders.indexOf("synced at");
+  if (syncedIndex === -1) syncedIndex = normHeaders.indexOf("last updated");
+
+  // Extract first non-empty sync value (if exists)
   let syncedDate = "";
   if (syncedIndex !== -1 && data.length > 0) {
-    const firstValue = (data[0][syncedIndex] || "").trim();
-    if (firstValue.includes("/")) {
-      const [dd, mm, yyyy] = firstValue.split("/");
-      if (dd && mm && yyyy) syncedDate = `${dd}-${mm}-${yyyy}`;
-    } else if (firstValue.includes("-")) {
-      const parts = firstValue.split("-");
-      if (parts[0].length === 4) {
-        const [yyyy, mm, dd] = firstValue.substring(0, 10).split("-");
-        syncedDate = `${dd}-${mm}-${yyyy}`;
+    for (let r = 0; r < data.length; r++) {
+      const rawVal = (data[r][syncedIndex] || "").toString().trim();
+      if (!rawVal) continue;
+      // parse common formats:
+      if (rawVal.includes("/")) {
+        // dd/mm/yyyy
+        const parts = rawVal.split("/");
+        if (parts.length >= 3) {
+          const dd = parts[0].padStart(2, "0");
+          const mm = parts[1].padStart(2, "0");
+          const yyyy = parts[2].length === 2 ? ("20" + parts[2]) : parts[2];
+          syncedDate = `${dd}-${mm}-${yyyy}`;
+          break;
+        }
+      } else if (rawVal.includes("-")) {
+        // could be yyyy-mm-dd or dd-mm-yyyy or yyyy-mm-dd hh:mm:ss
+        const first10 = rawVal.substring(0, 10);
+        const parts = first10.split("-");
+        if (parts.length === 3) {
+          if (parts[0].length === 4) {
+            // yyyy-mm-dd
+            const yyyy = parts[0], mm = parts[1], dd = parts[2];
+            syncedDate = `${dd}-${mm}-${yyyy}`;
+            break;
+          } else {
+            // dd-mm-yyyy
+            const dd = parts[0], mm = parts[1], yyyy = parts[2];
+            syncedDate = `${dd}-${mm}-${yyyy}`;
+            break;
+          }
+        }
       } else {
-        syncedDate = firstValue.substring(0, 10);
+        // fallback: try Date parse
+        const d = new Date(rawVal);
+        if (!isNaN(d.getTime())) {
+          const dd = String(d.getDate()).padStart(2, "0");
+          const mm = String(d.getMonth() + 1).padStart(2, "0");
+          const yyyy = d.getFullYear();
+          syncedDate = `${dd}-${mm}-${yyyy}`;
+          break;
+        }
       }
     }
   }
+
+  // Show last synced line (match other warehouse pages styling: uppercase + bold)
   syncedElem.innerText = "LAST SYNCED: " + (syncedDate || "N/A");
 
-  // Build table
   const table = document.querySelector("#warehouse table");
   const thead = table.querySelector("thead");
   const tbody = table.querySelector("tbody");
 
-  // Handle empty sheet
-  if (data.length === 0) {
+  // If no data
+  if (!data || data.length === 0) {
     thead.innerHTML = "";
-    tbody.innerHTML = `<tr><td colspan="${headers.length || 1}">No data available</td></tr>`;
-    return; // ✅ safe — inside function
+    tbody.innerHTML = `<tr><td colspan="${Math.max(headers.length,1)}">No data available</td></tr>`;
+    return;
   }
 
-  // Prepare headers
-  const displayHeaders = headers.filter((_, i) => i !== syncedIndex);
+  // Build display headers: remove synced column
+  const displayHeaders = headers.filter((_, i) => i !== syncedIndex)
+    .map(h => {
+      if (!h) return "";
+      const hnorm = h.toString().trim();
+      // rename for display:
+      if (hnorm.toLowerCase() === "warehouse") return "ITEM - WAREHOUSE";
+      if (hnorm.toLowerCase() === "scheduled inventory") return "SCHEDULED";
+      return hnorm;
+    });
+
   thead.innerHTML = "<tr>" + displayHeaders.map(h => `<th>${h}</th>`).join("") + "</tr>";
 
-  // Fill table rows
+  // Render rows: exclude synced col
   tbody.innerHTML = "";
   data.forEach(row => {
     const displayRow = row.filter((_, i) => i !== syncedIndex);
     let rowHTML = "<tr>";
 
     displayRow.forEach((cell, idx) => {
-      const header = (displayHeaders[idx] || "").trim().toLowerCase();
+      const headerLower = (displayHeaders[idx] || "").toString().trim().toLowerCase();
 
-      // Highlight Days to Stockout
-      if (header === "days to stockout" && cell) {
-        const days = parseFloat(cell);
+      // Keep days-to-stockout coloring logic (unchanged)
+      if (headerLower === "days to stockout" && cell) {
+        const days = parseFloat(String(cell).replace(/,/g, ""));
         const threshold = (name === "Amazon") ? 20 : 10;
-        const color = days < threshold ? "#FF4D4F" : "#333";
+        const color = (!isNaN(days) && days < threshold) ? "#FF4D4F" : "#333";
         rowHTML += `<td style="color:${color}; font-weight:600;">${cell}</td>`;
       } else {
+        // Normal cell
         rowHTML += `<td>${cell || ""}</td>`;
       }
     });
@@ -463,7 +512,8 @@ async function showWarehouse(name) {
     rowHTML += "</tr>";
     tbody.insertAdjacentHTML("beforeend", rowHTML);
   });
-} // ✅ clean ending
+}
+
 
 /* ====== ALL-IN-ONE WAREHOUSE (SUMMARY VIEW + EXPORT + SKU SUBSTITUTION) ====== */
 async function showAllWarehouses() {
@@ -2384,6 +2434,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
