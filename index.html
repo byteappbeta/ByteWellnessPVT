@@ -560,34 +560,90 @@ async function showAllWarehouses() {
     amz:    row[4] ? row[4].trim() : ""
   })).filter(r => r.display !== "");
 
-  /* -------------------------------------------
-        3) Build lookup maps for inventory tabs
-  ------------------------------------------- */
 
-  function buildMap(res) {
-    const hdr = res.headers.map(h => (h || "").toLowerCase().trim());
-    const skuIndex   = hdr.indexOf("sku");
-    const availIndex = hdr.indexOf("available");
-    const daysIndex  = hdr.indexOf("days to stockout");
-    const saleIndex  = hdr.indexOf("last 30 days sale");
+/* ===== BUILD LOOKUP MAPS FOR EACH WAREHOUSE ===== */
 
-    const map = new Map();
-    res.data.forEach(row => {
-      const sku = (row[skuIndex] || "").trim();
-      if (!sku) return;
+function mapFromData(res, type){
+  const hdrs = res.headers.map(h => (h || "").toLowerCase().trim());
+  const map = new Map();
+
+  if(type === "master"){
+    const skuI = hdrs.indexOf("sku");
+    const labI = hdrs.indexOf("labelled");
+    const nonLabI = hdrs.indexOf("non labelled");
+
+    res.data.forEach(r=>{
+      const sku = (r[skuI] || "").trim();
+      if(!sku) return;
       map.set(sku, {
-        available: row[availIndex] || "",
-        days: row[daysIndex] || "",
-        sale: row[saleIndex] || ""
+        labelled: r[labI] || 0,
+        nonlabelled: r[nonLabI] || 0
       });
     });
-    return map;
+
+  } else {
+    // SR-BLR, SR-MUM, AMAZON
+    const skuI  = hdrs.indexOf("sku");
+    const availI = hdrs.indexOf("available");
+    const daysI = hdrs.indexOf("days to stockout");
+    const saleI = hdrs.indexOf("last 30 days sale");
+
+    res.data.forEach(r=>{
+      const sku = (r[skuI] || "").trim();
+      if(!sku) return;
+
+      map.set(sku, {
+        available: r[availI] || 0,
+        days: r[daysI] || "-",
+        last30: r[saleI] || 0
+      });
+    });
+  }
+  return map;
+}
+
+const masterMap = mapFromData(masterRes, "master");
+const blrMap    = mapFromData(blrRes, "sr");
+const mumMap    = mapFromData(mumRes, "sr");
+const amzMap    = mapFromData(amzRes, "sr");
+
+/* ===== CREATE ROWS USING SKU MAP ===== */
+
+const rows = [];
+
+skuRows.forEach(sku => {
+
+  // Fetch warehouse values
+  const m  = masterMap.get(sku) || {};
+  const bl = blrMap.get(sku)    || {};
+  const mu = mumMap.get(sku)    || {};
+  const az = amzMap.get(sku)    || {};
+
+  // ----- MASTER formatting -----
+  const masterVal = (m.labelled || m.nonlabelled)
+    ? `${m.labelled || 0}(L)/${m.nonlabelled || 0}(NL)`
+    : "-";
+
+  // ----- Helper for SR & Amazon -----
+  function fmt(v){
+    if(!v.available && !v.days) return "-";
+    if(v.last30)
+      return `${v.available || 0} [${v.last30}] (${v.days || "-"})`;
+    return `${v.available || 0} (${v.days || "-"})`;
   }
 
-  const masterMap = buildMap(masterRes);
-  const blrMap    = buildMap(blrRes);
-  const mumMap    = buildMap(mumRes);
-  const amzMap    = buildMap(amzRes);
+  rows.push({
+    sku,
+    master: masterVal,
+    blr: fmt(bl),
+    mum: fmt(mu),
+    amz: fmt(az),
+    blrDays: bl.days,
+    mumDays: mu.days,
+    amzDays: az.days
+  });
+});
+
 
   /* -------------------------------------------
         4) Amazon Last Synced (same as old code)
@@ -2396,6 +2452,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
