@@ -680,35 +680,35 @@ async function showAllWarehouses() {
     `);
   });
 
-  /* Create export button area (same as old) */
-  let oldWrapper = document.getElementById("warehouseControls");
-  if (oldWrapper) oldWrapper.remove();
+  /* ===== EXPORT FUNCTION (with synced date) ===== */
+function exportAllWarehouses() {
+  const table = document.querySelector("#warehouse table");
+  const syncedText = document.getElementById("lastSynced").innerText || "";
+  let csv = "";
 
-  const wrapper = document.createElement("div");
-  wrapper.id = "warehouseControls";
-  wrapper.style.display = "flex";
-  wrapper.style.alignItems = "center";
-  wrapper.style.justifyContent = "center";
-  wrapper.style.gap = "10px";
-  wrapper.style.marginBottom = "10px";
+  // include last synced info at the top
+  csv += `"${syncedText.replace(/"/g, '""')}"\n\n`;
 
-  const btn = document.createElement("button");
-  btn.innerText = "Export CSV";
-  btn.id = "exportAllBtn";
-  btn.className = "export-btn";
-  btn.onclick = exportAllWarehouses;
+  // now export the visible table
+  const rows = table.querySelectorAll("tr");
+  rows.forEach(row => {
+    const cols = row.querySelectorAll("th,td");
+    const arr = [];
+    cols.forEach(c => arr.push(`"${c.innerText.replace(/"/g, '""')}"`));
+    csv += arr.join(",") + "\n";
+  });
 
-  const note = document.createElement("span");
-  note.innerText = "Format: Inventory [Last 30 Days Sale] (Days to Stockout)";
-  note.style.fontSize = "12px";
-  note.style.color = "#555";
-  note.style.fontStyle = "italic";
-
-  wrapper.appendChild(btn);
-  wrapper.appendChild(note);
-  syncedEl.insertAdjacentElement("afterend", wrapper);
+  // download file
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const syncDateMatch = syncedText.match(/\d{2}-\d{2}-\d{4}/);
+  const syncDate = syncDateMatch ? syncDateMatch[0] : "unknown";
+  a.href = url;
+  a.download = `All_Warehouses_${syncDate}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
-
 
 /* ====== BLINKIT ====== */
 
@@ -2393,6 +2393,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
