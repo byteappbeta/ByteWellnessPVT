@@ -515,10 +515,14 @@ async function showWarehouse(name) {
 }
 
 
-/* ====== ALL-IN-ONE WAREHOUSE (SUMMARY VIEW + EXPORT + SKU SUBSTITUTION) ====== */
+/* ===========================================================
+      ALL WAREHOUSES — WITH SKU OVERRIDE TABLE
+      Source tab: "All warehouses SKU"
+   =========================================================== */
 async function showAllWarehouses() {
-  removeWarehouseControls(); // ✅ use the global cleanup before showing page
+  removeWarehouseControls();
   showSection("warehouse");
+
   const titleEl = document.getElementById("warehouseName");
   const syncedEl = document.getElementById("lastSynced");
   titleEl.innerText = "All Warehouses";
@@ -527,229 +531,187 @@ async function showAllWarehouses() {
   const thead = table.querySelector("thead");
   const tbody = table.querySelector("tbody");
 
-// 🧩 Export button + format note (only show on All Warehouses)
-let oldWrapper = document.getElementById("warehouseControls");
-if (oldWrapper) oldWrapper.remove(); // ✅ always reset before adding a new one
-
-const wrapper = document.createElement("div");
-wrapper.id = "warehouseControls";
-wrapper.style.display = "flex";
-wrapper.style.alignItems = "center";
-wrapper.style.justifyContent = "center";
-wrapper.style.gap = "10px";
-wrapper.style.marginBottom = "10px";
-
-const btn = document.createElement("button");
-btn.innerText = "Export CSV";
-btn.id = "exportAllBtn";
-btn.className = "export-btn";
-btn.onclick = exportAllWarehouses;
-
-const note = document.createElement("span");
-note.innerText = "Format: Inventory [Last 30 Days Sale] (Days to Stockout)";
-note.style.fontSize = "12px";
-note.style.color = "#555";
-note.style.fontStyle = "italic";
-
-wrapper.appendChild(btn);
-wrapper.appendChild(note);
-syncedEl.insertAdjacentElement("afterend", wrapper);
-
-
-
+  // --- Show loading
   thead.innerHTML = "";
   tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>`;
 
-  try {
-    /* 1️⃣ Fetch all warehouse tabs */
-    const [masterRes, blrRes, mumRes, amzRes] = await Promise.all([
-      fetchWarehouseData("Master"),
-      fetchWarehouseData("Bangalore"),
-      fetchWarehouseData("Mumbai"),
-      fetchWarehouseData("Amazon")
-    ]);
+  /* -------------------------------------------
+        1) Fetch inventory tabs
+  ------------------------------------------- */
+  const [masterRes, blrRes, mumRes, amzRes, skuRes] = await Promise.all([
+    fetchWarehouseData("Master"),
+    fetchWarehouseData("Bangalore"),
+    fetchWarehouseData("Mumbai"),
+    fetchWarehouseData("Amazon"),
+    fetchWarehouseData("All warehouses SKU")
+  ]);
 
-    /* 2️⃣ Parse Amazon for SKU list + synced date */
-    const amzHdrs = amzRes.headers.map(h => (h || "").toLowerCase().trim());
-    const skuIdx = amzHdrs.indexOf("sku");
-    const availIdx = amzHdrs.indexOf("available");
-    const daysIdx = amzHdrs.indexOf("days to stockout");
-    const saleIdx = amzHdrs.indexOf("last 30 days sale");
-    const syncIdx = amzHdrs.indexOf("synced at");
+  /* -------------------------------------------
+        2) Parse SKU override table
+        Columns: A=display, B=master, C=blr, D=mum, E=amazon
+  ------------------------------------------- */
+  const skuValues = skuRes.data || [];
 
-    let lastSynced = "";
-    if (syncIdx !== -1 && amzRes.data.length > 0) {
-      const raw = (amzRes.data[0][syncIdx] || "").trim();
-      if (raw.includes("/")) {
-        const [dd, mm, yy] = raw.split("/");
-        lastSynced = `${dd}-${mm}-${yy}`;
-      } else if (raw.includes("-")) {
-        const parts = raw.split("-");
-        if (parts[0].length === 4) {
-          const [yyyy, mm, dd] = raw.substring(0, 10).split("-");
-          lastSynced = `${dd}-${mm}-${yyyy}`;
-        } else {
-          lastSynced = raw.substring(0, 10);
-        }
-      }
-    }
-    syncedEl.innerText = "LAST SYNCED: " + (lastSynced || "N/A");
+  const skuOverrideList = skuValues.map(row => ({
+    display: row[0] ? row[0].trim() : "",
+    master: row[1] ? row[1].trim() : "",
+    blr:    row[2] ? row[2].trim() : "",
+    mum:    row[3] ? row[3].trim() : "",
+    amz:    row[4] ? row[4].trim() : ""
+  })).filter(r => r.display !== "");
 
-    const amzMap = new Map();
-    amzRes.data.forEach(r => {
-      const sku = (r[skuIdx] || "").trim();
+  /* -------------------------------------------
+        3) Build lookup maps for inventory tabs
+  ------------------------------------------- */
+
+  function buildMap(res) {
+    const hdr = res.headers.map(h => (h || "").toLowerCase().trim());
+    const skuIndex   = hdr.indexOf("sku");
+    const availIndex = hdr.indexOf("available");
+    const daysIndex  = hdr.indexOf("days to stockout");
+    const saleIndex  = hdr.indexOf("last 30 days sale");
+
+    const map = new Map();
+    res.data.forEach(row => {
+      const sku = (row[skuIndex] || "").trim();
       if (!sku) return;
-      amzMap.set(sku, {
-        available: r[availIdx] || "",
-        days: r[daysIdx] || "",
-        last30: r[saleIdx] || ""
+      map.set(sku, {
+        available: row[availIndex] || "",
+        days: row[daysIndex] || "",
+        sale: row[saleIndex] || ""
       });
     });
-
-    /* 3️⃣ Build lookup maps for other warehouses */
-    function mapFromData(res, keys) {
-      const hdrs = res.headers.map(h => (h || "").toLowerCase().trim());
-      const map = new Map();
-      if (keys.type === "master") {
-        const skuI = hdrs.indexOf("sku");
-        const labI = hdrs.indexOf("labelled");
-        const nonLabI = hdrs.indexOf("non labelled");
-        res.data.forEach(r => {
-          const sku = (r[skuI] || "").trim();
-          if (!sku) return;
-          map.set(sku, {
-            labelled: r[labI] || 0,
-            nonlabelled: r[nonLabI] || 0
-          });
-        });
-      } else {
-        const skuI = hdrs.indexOf("sku");
-        const availI = hdrs.indexOf("available");
-        const daysI = hdrs.indexOf("days to stockout");
-        const saleI = hdrs.indexOf("last 30 days sale");
-        res.data.forEach(r => {
-          const sku = (r[skuI] || "").trim();
-          if (!sku) return;
-          map.set(sku, {
-            available: r[availI] || "",
-            days: r[daysI] || "",
-            last30: r[saleI] || ""
-          });
-        });
-      }
-      return map;
-    }
-
-    const masterMap = mapFromData(masterRes, { type: "master" });
-    const blrMap = mapFromData(blrRes, { type: "sr" });
-    const mumMap = mapFromData(mumRes, { type: "sr" });
-
-    /* 4️⃣ Prepare final table rows */
-    const rows = [];
-    amzMap.forEach((amzVal, sku) => {
-      const lookupSku = sku === "BF-NS-TRS" ? "NSTRIP-CLR2" : sku;
-
-      const master = masterMap.get(lookupSku) || {};
-      const blr = blrMap.get(lookupSku) || {};
-      const mum = mumMap.get(lookupSku) || {};
-
-      const mStr =
-        master.labelled || master.nonlabelled
-          ? `${master.labelled || 0}(L)/${master.nonlabelled || 0}(NL)`
-          : "-";
-
-      function format(val) {
-  if (!val.available && !val.days) return "-";
-  if (val.last30)
-    return `${val.available || 0} [${val.last30 || 0}] (${val.days || "-"})`;
-  return `${val.available || 0} (${val.days || "-"})`;
-}
-      
-      const blrStr = format(blr);
-      const mumStr = format(mum);
-      const amzStr = format(amzVal);
-
-      rows.push({
-        sku,
-        master: mStr,
-        blr: blrStr,
-        mum: mumStr,
-        amz: amzStr,
-        blrDays: blr.days,
-        mumDays: mum.days,
-        amzDays: amzVal.days
-      });
-    });
-
-    /* 5️⃣ Render table */
-    thead.innerHTML = `
-      <tr>
-        <th>SKU</th>
-        <th>Master</th>
-        <th>SR-BLR</th>
-        <th>SR-MUM</th>
-        <th>Amazon</th>
-      </tr>
-    `;
-    tbody.innerHTML = "";
-
-    rows.forEach(r => {
-      const blrColor = parseFloat(r.blrDays) < 10 ? "#FF4D4F" : "#333";
-      const mumColor = parseFloat(r.mumDays) < 10 ? "#FF4D4F" : "#333";
-      const amzColor = parseFloat(r.amzDays) < 20 ? "#FF4D4F" : "#333";
-
-      const html = `
-        <tr>
-          <td>${r.sku}</td>
-          <td>${r.master}</td>
-          <td style="color:${blrColor};font-weight:600;">${r.blr}</td>
-          <td style="color:${mumColor};font-weight:600;">${r.mum}</td>
-          <td style="color:${amzColor};font-weight:600;">${r.amz}</td>
-        </tr>
-      `;
-      tbody.insertAdjacentHTML("beforeend", html);
-    });
-
-    if (rows.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No SKUs found in Amazon sheet.</td></tr>`;
-    }
-  } catch (err) {
-    console.error("All Warehouses load error:", err);
-    tbody.innerHTML = `<tr><td colspan="5" style="color:red;text-align:center;">Error loading data. Check console.</td></tr>`;
-    document.getElementById("lastSynced").innerText = "LAST SYNCED: N/A";
+    return map;
   }
-}
 
+  const masterMap = buildMap(masterRes);
+  const blrMap    = buildMap(blrRes);
+  const mumMap    = buildMap(mumRes);
+  const amzMap    = buildMap(amzRes);
 
-/* ===== EXPORT FUNCTION (with synced date) ===== */
-function exportAllWarehouses() {
-  const table = document.querySelector("#warehouse table");
-  const syncedText = document.getElementById("lastSynced").innerText || "";
-  let csv = "";
+  /* -------------------------------------------
+        4) Amazon Last Synced (same as old code)
+  ------------------------------------------- */
+  const amzHdr = amzRes.headers.map(h => (h || "").toLowerCase().trim());
+  const syncedIndex = amzHdr.indexOf("synced at");
 
-  // include last synced info at the top
-  csv += `"${syncedText.replace(/"/g, '""')}"\n\n`;
+  let lastSynced = "N/A";
+  if (syncedIndex !== -1 && amzRes.data.length > 0) {
+    const raw = (amzRes.data[0][syncedIndex] || "").trim();
+    if (raw.includes("/")) {
+      const [dd, mm, yy] = raw.split("/");
+      lastSynced = `${dd}-${mm}-${yy}`;
+    } else if (raw.includes("-")) {
+      const parts = raw.split("-");
+      if (parts[0].length === 4) {
+        const [yyyy, mm, dd] = raw.substring(0, 10).split("-");
+        lastSynced = `${dd}-${mm}-${yyyy}`;
+      } else {
+        lastSynced = raw.substring(0, 10);
+      }
+    }
+  }
 
-  // now export the visible table
-  const rows = table.querySelectorAll("tr");
-  rows.forEach(row => {
-    const cols = row.querySelectorAll("th,td");
-    const arr = [];
-    cols.forEach(c => arr.push(`"${c.innerText.replace(/"/g, '""')}"`));
-    csv += arr.join(",") + "\n";
+  syncedEl.innerText = "LAST SYNCED: " + lastSynced;
+
+  /* -------------------------------------------
+        5) Prepare final combined rows
+  ------------------------------------------- */
+  function formatValue(obj) {
+    if (!obj) return "-";
+    const a = obj.available || 0;
+    const s = obj.sale || 0;
+    const d = obj.days || "-";
+    return `${a} [${s}] (${d})`;
+  }
+
+  const rows = skuOverrideList.map(entry => {
+    const displaySKU = entry.display;
+
+    // resolve alternate SKUs or fallback to common
+    const masterSKU = entry.master || displaySKU;
+    const blrSKU    = entry.blr    || displaySKU;
+    const mumSKU    = entry.mum    || displaySKU;
+    const amzSKU    = entry.amz    || displaySKU;
+
+    const master = masterMap.get(masterSKU);
+    const blr    = blrMap.get(blrSKU);
+    const mum    = mumMap.get(mumSKU);
+    const amz    = amzMap.get(amzSKU);
+
+    return {
+      sku: displaySKU,
+      master: formatValue(master),
+      blr: formatValue(blr),
+      mum: formatValue(mum),
+      amz: formatValue(amz),
+      blrDays: blr?.days || "",
+      mumDays: mum?.days || "",
+      amzDays: amz?.days || ""
+    };
   });
 
-  // download file
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const syncDateMatch = syncedText.match(/\d{2}-\d{2}-\d{4}/);
-  const syncDate = syncDateMatch ? syncDateMatch[0] : "unknown";
-  a.href = url;
-  a.download = `All_Warehouses_${syncDate}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+  /* -------------------------------------------
+        6) Render table
+  ------------------------------------------- */
+  thead.innerHTML = `
+    <tr>
+      <th>SKU</th>
+      <th>Master</th>
+      <th>SR-BLR</th>
+      <th>SR-MUM</th>
+      <th>Amazon</th>
+    </tr>
+  `;
+
+  tbody.innerHTML = "";
+
+  rows.forEach(r => {
+    const colorBlr = parseFloat(r.blrDays) < 10 ? "#FF4D4F" : "#333";
+    const colorMum = parseFloat(r.mumDays) < 10 ? "#FF4D4F" : "#333";
+    const colorAmz = parseFloat(r.amzDays) < 20 ? "#FF4D4F" : "#333";
+
+    const html = `
+      <tr>
+        <td>${r.sku}</td>
+        <td>${r.master}</td>
+        <td style="color:${colorBlr};font-weight:600;">${r.blr}</td>
+        <td style="color:${colorMum};font-weight:600;">${r.mum}</td>
+        <td style="color:${colorAmz};font-weight:600;">${r.amz}</td>
+      </tr>
+    `;
+    tbody.insertAdjacentHTML("beforeend", html);
+  });
+
+  /* Create export button area (same as old) */
+  let oldWrapper = document.getElementById("warehouseControls");
+  if (oldWrapper) oldWrapper.remove();
+
+  const wrapper = document.createElement("div");
+  wrapper.id = "warehouseControls";
+  wrapper.style.display = "flex";
+  wrapper.style.alignItems = "center";
+  wrapper.style.justifyContent = "center";
+  wrapper.style.gap = "10px";
+  wrapper.style.marginBottom = "10px";
+
+  const btn = document.createElement("button");
+  btn.innerText = "Export CSV";
+  btn.id = "exportAllBtn";
+  btn.className = "export-btn";
+  btn.onclick = exportAllWarehouses;
+
+  const note = document.createElement("span");
+  note.innerText = "Format: Inventory [Last 30 Days Sale] (Days to Stockout)";
+  note.style.fontSize = "12px";
+  note.style.color = "#555";
+  note.style.fontStyle = "italic";
+
+  wrapper.appendChild(btn);
+  wrapper.appendChild(note);
+  syncedEl.insertAdjacentElement("afterend", wrapper);
 }
+
 
 /* ====== BLINKIT ====== */
 
@@ -2434,6 +2396,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
