@@ -680,24 +680,33 @@ async function showAllWarehouses() {
     `);
   });
 
-  /* EXPORT BUTTON */
-  let old = document.getElementById("warehouseControls");
-  if (old) old.remove();
+  /* Create export button area (same as old) */
+  let oldWrapper = document.getElementById("warehouseControls");
+  if (oldWrapper) oldWrapper.remove();
 
-  const box = document.createElement("div");
-  box.id = "warehouseControls";
-  box.style.display = "flex";
-  box.style.justifyContent = "center";
-  box.style.gap = "10px";
-  box.style.marginBottom = "10px";
+  const wrapper = document.createElement("div");
+  wrapper.id = "warehouseControls";
+  wrapper.style.display = "flex";
+  wrapper.style.alignItems = "center";
+  wrapper.style.justifyContent = "center";
+  wrapper.style.gap = "10px";
+  wrapper.style.marginBottom = "10px";
 
   const btn = document.createElement("button");
   btn.innerText = "Export CSV";
+  btn.id = "exportAllBtn";
   btn.className = "export-btn";
   btn.onclick = exportAllWarehouses;
 
-  box.appendChild(btn);
-  syncedEl.insertAdjacentElement("afterend", box);
+  const note = document.createElement("span");
+  note.innerText = "Format: Inventory [Last 30 Days Sale] (Days to Stockout)";
+  note.style.fontSize = "12px";
+  note.style.color = "#555";
+  note.style.fontStyle = "italic";
+
+  wrapper.appendChild(btn);
+  wrapper.appendChild(note);
+  syncedEl.insertAdjacentElement("afterend", wrapper);
 }
 
 
@@ -2384,6 +2393,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
