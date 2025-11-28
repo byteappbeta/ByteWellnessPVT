@@ -172,6 +172,7 @@ html, body {
     <div class="card" onclick="showWarehouse('Amazon')">Amazon Warehouse</div>
     <div class="card" onclick="showWarehouse('Blinkit')">Blinkit Warehouse</div>
     <div class="card" onclick="showAllWarehouses()">All Warehouses</div>
+    <div class="card" onclick="showSection('stockTransfer')">Stock Transfer</div>
   </div>
   <button class="btn" onclick="showSection('home')">Back</button>
 </div>
@@ -185,6 +186,14 @@ html, body {
     <tbody></tbody>
   </table>
   <button class="btn" onclick="showSection('inventory')">Back to Warehouses</button>
+</div>
+
+  <!-- STOCK TRANSFER PAGE -->
+<div class="container hidden" id="stockTransfer">
+  <h2>Stock Transfer</h2>
+  <div id="stockTransferTable"></div>
+  <div id="stockTransferPagination" style="text-align:center; margin-top:20px;"></div>
+  <button class="btn" onclick="showSection('inventory')">Back</button>
 </div>
 
 <!-- SALES MAIN PAGE -->
@@ -938,6 +947,94 @@ document.addEventListener("DOMContentLoaded", ()=>{
     loadBlinkitData(); // auto-load yesterday's data
   }
 });
+
+  /* ============================
+   STOCK TRANSFER MODULE
+============================ */
+
+const STOCK_TRANSFER_SHEET_ID = "1v96RPqS71LvWbKprqiy7S4EZDF7K9FK8gYyLqNFlffA"; 
+const STOCK_TRANSFER_SHEET = "Sheet1";   // Change if your sheet name is different
+
+// Pagination config
+let stPage = 1;
+const stLimit = 20;  // rows per page
+let stData = [];
+
+async function fetchStockTransferData() {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${STOCK_TRANSFER_SHEET_ID}/values/${encodeURIComponent(STOCK_TRANSFER_SHEET)}?key=${API_KEY}`;
+  const res = await fetch(url);
+  const json = await res.json();
+  return json.values || [];
+}
+
+function renderStockTransferTable() {
+  const div = document.getElementById("stockTransferTable");
+  const pagDiv = document.getElementById("stockTransferPagination");
+
+  if (stData.length === 0) {
+    div.innerHTML = "<p>No stock transfer data available.</p>";
+    pagDiv.innerHTML = "";
+    return;
+  }
+
+  // Pagination math
+  const total = stData.length;
+  const totalPages = Math.ceil(total / stLimit);
+  const start = (stPage - 1) * stLimit;
+  const end = start + stLimit;
+
+  const chunk = stData.slice(start, end);
+
+  // Render table
+  let html = "<table><thead><tr>";
+  chunk[0].forEach(h => html += `<th>${h}</th>`);
+  html += "</tr></thead><tbody>";
+
+  chunk.slice(1).forEach(row => {
+    html += "<tr>";
+    row.forEach(col => html += `<td>${col || ""}</td>`);
+    html += "</tr>";
+  });
+
+  html += "</tbody></table>";
+
+  div.innerHTML = html;
+
+  // Pagination buttons
+  let pHtml = "";
+  if (stPage > 1) {
+    pHtml += `<button class="btn" onclick="stPage--; renderStockTransferTable()">Previous</button> `;
+  }
+  pHtml += `Page ${stPage} of ${totalPages}`;
+  if (stPage < totalPages) {
+    pHtml += ` <button class="btn" onclick="stPage++; renderStockTransferTable()">Next</button>`;
+  }
+
+  pagDiv.innerHTML = pHtml;
+}
+
+async function showStockTransfer() {
+  showSection('stockTransfer');
+
+  if (stData.length === 0) {
+    const raw = await fetchStockTransferData();
+
+    if (raw.length === 0) {
+      document.getElementById("stockTransferTable").innerHTML =
+        "<p>No data found in Stock Transfer sheet.</p>";
+      return;
+    }
+
+    // Reverse rows so latest appears first
+    const headers = raw[0];
+    const rows = raw.slice(1).reverse();
+
+    stData = [headers, ...rows];
+  }
+
+  renderStockTransferTable();
+}
+
 /* ====== NAVIGATION ====== */
 const SECTIONS = [
   "home",
@@ -949,16 +1046,23 @@ const SECTIONS = [
   "blinkit",
   "amazonSales",
   "flipkartSales",
-  "shopifySalesSection"
+  "shopifySalesSection",
+  "stockTransfer"
 ];
 
 function showSection(id) {
-  // 🧹 Always remove All Warehouses controls when switching sections
+  // Always remove All Warehouses controls when switching sections
   removeWarehouseControls();
 
   SECTIONS.forEach(s => document.getElementById(s).classList.add("hidden"));
   document.getElementById(id).classList.remove("hidden");
+
+  // 👉 Load Stock Transfer when switching to that page
+  if (id === "stockTransfer") {
+    showStockTransfer();
+  }
 }
+
   
 </script>
 
@@ -2468,6 +2572,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
