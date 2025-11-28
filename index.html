@@ -383,73 +383,104 @@ function removeWarehouseControls() {
   if (controls) controls.remove();
 }
 
-  /* ================================
-   STOCK TRANSFER CONFIG
-================================ */
+/* =============================================================
+   STOCK TRANSFER MODULE (FINAL WORKING VERSION)
+   - Reads Google Sheet exactly as structured
+   - Handles blank rows (carry-forward logic)
+   - Groups pages by date
+   - Displays grouped rows just like Google Sheets
+============================================================= */
+
 const STOCK_TRANSFER_SHEET_ID = "1v96RPqS71LvWbKprqiy7S4EZDF7K9FK8gYyLqNFlffA";
-const STOCK_TRANSFER_SHEET = "Sheet1";   // Change if your sheet tab name differs
+const STOCK_TRANSFER_SHEET = "Sheet1";
 
-/* ================================
-   STOCK TRANSFER STATE
-================================ */
-let stRawData = [];     // All rows (excluding header), reversed
-let stPages = [];       // Array of pages (grouped by date)
-let stCurrentPage = 1;  // Current page number
+let stRawData = [];     // Cleaned, normalized rows
+let stPages = [];       // Date-grouped pages
+let stCurrentPage = 1;  // Active page
 
-/* ================================
-   FETCH GOOGLE SHEET DATA
-================================ */
+/* ---- Fetch raw values from Google Sheets ---- */
 async function fetchStockTransferData() {
-  const url =
-    `https://sheets.googleapis.com/v4/spreadsheets/${STOCK_TRANSFER_SHEET_ID}/values/` +
-    `${encodeURIComponent(STOCK_TRANSFER_SHEET)}?key=${API_KEY}`;
-
-  console.log("Fetching Stock Transfer:", url);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${STOCK_TRANSFER_SHEET_ID}/values/${encodeURIComponent(STOCK_TRANSFER_SHEET)}?key=${API_KEY}`;
+  console.log("Fetching Stock Transfer →", url);
 
   const res = await fetch(url);
   const json = await res.json();
-  console.log("Stock Transfer Response:", json);
+  console.log("Raw Sheet Data:", json);
 
   return json.values || [];
 }
 
-/* ================================
-   GROUP ROWS BY DATE
-   (Prevents half-date splitting across pages)
-================================ */
+/* ======================================================
+   FIX MISSING FIELDS (Date / From / To / Category)
+   - Carry forward previous non-empty values
+   - Makes rows consistent for grouping
+====================================================== */
+function normalizeStockTransferRows(rows) {
+  let lastDate = "";
+  let lastFrom = "";
+  let lastTo = "";
+  let lastCategory = "";
+
+  return rows.map(row => {
+    const date = row[0] || lastDate;
+    const from = row[1] || lastFrom;
+    const to = row[2] || lastTo;
+    const category = row[3] || lastCategory;
+    const item = row[4] || "";
+    const qty = row[5] || "";
+
+    lastDate = date;
+    lastFrom = from;
+    lastTo = to;
+    lastCategory = category;
+
+    return [date, from, to, category, item, qty];
+  });
+}
+
+/* ======================================================
+   GROUP Rows by Date — keep all rows of same date
+   on one page for pagination
+====================================================== */
 function groupRowsByDate(rows) {
   const pages = [];
   let group = [];
-  let current = rows[0][0]; // first date
+  let currentDate = rows[0][0];
 
   rows.forEach(r => {
-    if (r[0] !== current) {
+    if (r[0] !== currentDate) {
       pages.push(group);
       group = [];
-      current = r[0];
+      currentDate = r[0];
     }
     group.push(r);
   });
 
-  if (group.length) pages.push(group);
-
+  if (group.length > 0) pages.push(group);
   return pages;
 }
 
-/* ================================
-   RENDER TABLE
-================================ */
+/* ======================================================
+   RENDER Table — show values EXACTLY like Google Sheets
+   - First row shows Date/From/To/Category
+   - Sub rows hide repeated values
+====================================================== */
 function renderStockTransferTable() {
   const tableDiv = document.getElementById("stockTransferTable");
   const pagDiv = document.getElementById("stockTransferPagination");
 
   if (stPages.length === 0) {
-    tableDiv.innerHTML = "<p>No stock transfer data found.</p>";
+    tableDiv.innerHTML = "<p>No Stock Transfer data found.</p>";
     pagDiv.innerHTML = "";
     return;
   }
 
   const rows = stPages[stCurrentPage - 1];
+
+  let lastDate = "";
+  let lastFrom = "";
+  let lastTo = "";
+  let lastCategory = "";
 
   let html = `
     <table>
@@ -467,23 +498,29 @@ function renderStockTransferTable() {
   `;
 
   rows.forEach(r => {
-    html += `
-      <tr>
-        <td>${r[0] || ""}</td>
-        <td>${r[1] || ""}</td>
-        <td>${r[2] || ""}</td>
-        <td>${r[3] || ""}</td>
-        <td>${r[4] || ""}</td>
-        <td>${r[5] || ""}</td>
-      </tr>
-    `;
+    html += "<tr>";
+
+    // Only show values when they change (same as Google Sheets)
+    html += `<td>${r[0] === lastDate ? "" : r[0]}</td>`;
+    html += `<td>${r[1] === lastFrom ? "" : r[1]}</td>`;
+    html += `<td>${r[2] === lastTo ? "" : r[2]}</td>`;
+    html += `<td>${r[3] === lastCategory ? "" : r[3]}</td>`;
+
+    html += `<td>${r[4]}</td>`;
+    html += `<td>${r[5]}</td>`;
+
+    lastDate = r[0];
+    lastFrom = r[1];
+    lastTo = r[2];
+    lastCategory = r[3];
+
+    html += "</tr>";
   });
 
   html += "</tbody></table>";
-
   tableDiv.innerHTML = html;
 
-  /* ---- Pagination ---- */
+  /* ---------------- Pagination ---------------- */
   let p = "";
 
   if (stCurrentPage > 1) {
@@ -493,20 +530,18 @@ function renderStockTransferTable() {
   p += ` Page ${stCurrentPage} of ${stPages.length} `;
 
   if (stCurrentPage < stPages.length) {
-    p += ` <button class="btn" onclick="stCurrentPage++; renderStockTransferTable()">Next</button>`;
+    p += `<button class="btn" onclick="stCurrentPage++; renderStockTransferTable()">Next</button>`;
   }
 
   pagDiv.innerHTML = p;
 }
 
-/* ================================
-   MAIN LOADER (NO RECURSION)
-================================ */
+/* ======================================================
+   MAIN entry — loads data & displays it
+====================================================== */
 async function showStockTransfer() {
+  showSection('stockTransfer');
 
-  // Prevent infinite loop — DO NOT CALL showSection() here
-
-  // Only fetch once
   if (stRawData.length === 0) {
     const raw = await fetchStockTransferData();
 
@@ -516,13 +551,17 @@ async function showStockTransfer() {
       return;
     }
 
-    // raw[0] = header row, raw[1...] = data
-    stRawData = raw.slice(1).reverse();  // newest → oldest
-    stPages = groupRowsByDate(stRawData);
+    let rows = raw.slice(1).reverse();  // newest → oldest
+
+    rows = normalizeStockTransferRows(rows); // FIX blanks
+
+    stRawData = rows;
+    stPages = groupRowsByDate(rows);    // build date pages
   }
 
   renderStockTransferTable();
 }
+
 
 
 /* ====== INVENTORY ====== */
@@ -2629,6 +2668,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
