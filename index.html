@@ -1047,6 +1047,16 @@ function renderStockTransferTable() {
   pagDiv.innerHTML = p;
 }
 
+  async function fetchStockTransferData() {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${STOCK_TRANSFER_SHEET_ID}/values/${encodeURIComponent(STOCK_TRANSFER_SHEET)}?key=${API_KEY}`;
+  console.log("Fetching:", url);  // 👈 shows final API URL
+  const res = await fetch(url);
+  const json = await res.json();
+  console.log("Raw Sheet Response:", json);  // 👈 shows what Google returns
+  return json.values || [];
+}
+
+
 /* ---- Main loader ---- */
 async function showStockTransfer() {
 
@@ -2612,6 +2622,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
