@@ -383,6 +383,148 @@ function removeWarehouseControls() {
   if (controls) controls.remove();
 }
 
+  /* ================================
+   STOCK TRANSFER CONFIG
+================================ */
+const STOCK_TRANSFER_SHEET_ID = "1v96RPqS71LvWbKprqiy7S4EZDF7K9FK8gYyLqNFlffA";
+const STOCK_TRANSFER_SHEET = "Sheet1";   // Change if your sheet tab name differs
+
+/* ================================
+   STOCK TRANSFER STATE
+================================ */
+let stRawData = [];     // All rows (excluding header), reversed
+let stPages = [];       // Array of pages (grouped by date)
+let stCurrentPage = 1;  // Current page number
+
+/* ================================
+   FETCH GOOGLE SHEET DATA
+================================ */
+async function fetchStockTransferData() {
+  const url =
+    `https://sheets.googleapis.com/v4/spreadsheets/${STOCK_TRANSFER_SHEET_ID}/values/` +
+    `${encodeURIComponent(STOCK_TRANSFER_SHEET)}?key=${API_KEY}`;
+
+  console.log("Fetching Stock Transfer:", url);
+
+  const res = await fetch(url);
+  const json = await res.json();
+  console.log("Stock Transfer Response:", json);
+
+  return json.values || [];
+}
+
+/* ================================
+   GROUP ROWS BY DATE
+   (Prevents half-date splitting across pages)
+================================ */
+function groupRowsByDate(rows) {
+  const pages = [];
+  let group = [];
+  let current = rows[0][0]; // first date
+
+  rows.forEach(r => {
+    if (r[0] !== current) {
+      pages.push(group);
+      group = [];
+      current = r[0];
+    }
+    group.push(r);
+  });
+
+  if (group.length) pages.push(group);
+
+  return pages;
+}
+
+/* ================================
+   RENDER TABLE
+================================ */
+function renderStockTransferTable() {
+  const tableDiv = document.getElementById("stockTransferTable");
+  const pagDiv = document.getElementById("stockTransferPagination");
+
+  if (stPages.length === 0) {
+    tableDiv.innerHTML = "<p>No stock transfer data found.</p>";
+    pagDiv.innerHTML = "";
+    return;
+  }
+
+  const rows = stPages[stCurrentPage - 1];
+
+  let html = `
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>From</th>
+          <th>To</th>
+          <th>Category</th>
+          <th>Item</th>
+          <th>Qty</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  rows.forEach(r => {
+    html += `
+      <tr>
+        <td>${r[0] || ""}</td>
+        <td>${r[1] || ""}</td>
+        <td>${r[2] || ""}</td>
+        <td>${r[3] || ""}</td>
+        <td>${r[4] || ""}</td>
+        <td>${r[5] || ""}</td>
+      </tr>
+    `;
+  });
+
+  html += "</tbody></table>";
+
+  tableDiv.innerHTML = html;
+
+  /* ---- Pagination ---- */
+  let p = "";
+
+  if (stCurrentPage > 1) {
+    p += `<button class="btn" onclick="stCurrentPage--; renderStockTransferTable()">Previous</button> `;
+  }
+
+  p += ` Page ${stCurrentPage} of ${stPages.length} `;
+
+  if (stCurrentPage < stPages.length) {
+    p += ` <button class="btn" onclick="stCurrentPage++; renderStockTransferTable()">Next</button>`;
+  }
+
+  pagDiv.innerHTML = p;
+}
+
+/* ================================
+   MAIN LOADER (NO RECURSION)
+================================ */
+async function showStockTransfer() {
+
+  // Prevent infinite loop — DO NOT CALL showSection() here
+
+  // Only fetch once
+  if (stRawData.length === 0) {
+    const raw = await fetchStockTransferData();
+
+    if (raw.length < 2) {
+      document.getElementById("stockTransferTable").innerHTML =
+        "<p>No data available.</p>";
+      return;
+    }
+
+    // raw[0] = header row, raw[1...] = data
+    stRawData = raw.slice(1).reverse();  // newest → oldest
+    stPages = groupRowsByDate(stRawData);
+  }
+
+  renderStockTransferTable();
+}
+
+
 /* ====== INVENTORY ====== */
 const warehouseSheets = {
   "Master": "Master",
@@ -948,141 +1090,6 @@ document.addEventListener("DOMContentLoaded", ()=>{
   }
 });
 
-  /* ============================
-   STOCK TRANSFER MODULE
-============================ */
-
-const STOCK_TRANSFER_SHEET_ID = "1v96RPqS71LvWbKprqiy7S4EZDF7K9FK8gYyLqNFlffA"; 
-const STOCK_TRANSFER_SHEET = "Sheet1";   // Change if your sheet name is different
-
-/* ==========================================
-   STOCK TRANSFER (with grouped-by-date pages)
-========================================== */
-
-let stData = [];          // full reversed data
-let stPages = [];         // grouped pages
-let stCurrentPage = 1;    // current page index
-
-async function fetchStockTransferData() {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${STOCK_TRANSFER_SHEET_ID}/values/${encodeURIComponent(STOCK_TRANSFER_SHEET)}?key=${API_KEY}`;
-  const res = await fetch(url);
-  const json = await res.json();
-  return json.values || [];
-}
-
-/* ---- GROUP rows so that all rows of same date stay on same page ---- */
-function buildDateGroupedPages(rows) {
-  const pages = [];
-  let currentGroup = [];
-  let currentDate = rows[0][0];
-
-  rows.forEach(row => {
-    const rowDate = row[0];
-
-    if (rowDate !== currentDate) {
-      pages.push(currentGroup);
-      currentGroup = [];
-      currentDate = rowDate;
-    }
-    currentGroup.push(row);
-  });
-
-  if (currentGroup.length > 0) {
-    pages.push(currentGroup);
-  }
-
-  return pages;
-}
-
-/* ---- Render table ---- */
-function renderStockTransferTable() {
-  const tableDiv = document.getElementById("stockTransferTable");
-  const pagDiv = document.getElementById("stockTransferPagination");
-
-  if (stPages.length === 0) {
-    tableDiv.innerHTML = "<p>No stock transfer data found.</p>";
-    pagDiv.innerHTML = "";
-    return;
-  }
-
-  const pageData = stPages[stCurrentPage - 1];
-
-  let html = `<table>
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>From</th>
-        <th>To</th>
-        <th>Category</th>
-        <th>Item</th>
-        <th>Qty</th>
-      </tr>
-    </thead>
-    <tbody>
-  `;
-
-  pageData.forEach(row => {
-    html += "<tr>";
-    row.forEach(col => html += `<td>${col || ""}</td>`);
-    html += "</tr>";
-  });
-
-  html += "</tbody></table>";
-
-  tableDiv.innerHTML = html;
-
-  /* ------- Pagination -------- */
-  let p = "";
-
-  if (stCurrentPage > 1) {
-    p += `<button class="btn" onclick="stCurrentPage--; renderStockTransferTable()">Previous</button> `;
-  }
-
-  p += ` Page ${stCurrentPage} of ${stPages.length} `;
-
-  if (stCurrentPage < stPages.length) {
-    p += `<button class="btn" onclick="stCurrentPage++; renderStockTransferTable()">Next</button>`;
-  }
-
-  pagDiv.innerHTML = p;
-}
-
-  async function fetchStockTransferData() {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${STOCK_TRANSFER_SHEET_ID}/values/${encodeURIComponent(STOCK_TRANSFER_SHEET)}?key=${API_KEY}`;
-  console.log("Fetching:", url);  // 👈 shows final API URL
-  const res = await fetch(url);
-  const json = await res.json();
-  console.log("Raw Sheet Response:", json);  // 👈 shows what Google returns
-  return json.values || [];
-}
-
-
-/* ---- Main loader ---- */
-async function showStockTransfer() {
-
-  showSection('stockTransfer');
-
-  if (stData.length === 0) {
-    const raw = await fetchStockTransferData();
-
-    if (raw.length < 2) {
-      document.getElementById("stockTransferTable").innerHTML =
-        "<p>No data available.</p>";
-      return;
-    }
-
-    const headers = raw[0];
-    const rows = raw.slice(1).reverse();   // newest → oldest
-
-    // Expect columns: Date, From, To, Category, Item, Qty
-    stData = rows;
-
-    // Build grouped pages (do not split date batches)
-    stPages = buildDateGroupedPages(stData);
-  }
-
-  renderStockTransferTable();
-}
 
 
 /* ====== NAVIGATION ====== */
@@ -2622,6 +2629,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
