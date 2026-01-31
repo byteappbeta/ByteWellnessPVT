@@ -163,6 +163,7 @@ body {
   <div class="card-grid">
     <div class="card" onclick="showSection('inventory')">Inventory</div>
     <div class="card" onclick="showSection('sales')">Sales</div>
+    <div class="card" onclick="showSection('analytics')">Analytics</div>
   </div>
 </div>
 
@@ -190,6 +191,59 @@ body {
   </table>
   <button class="btn" onclick="showSection('inventory')">Back to Warehouses</button>
 </div>
+
+  <!-- ANALYTICS MAIN PAGE -->
+<div class="container hidden" id="analytics">
+  <h2>Analytics</h2>
+
+  <div class="card-grid">
+    <div class="card" onclick="showSection('analyticsUnits')">Multi Units</div>
+    <div class="card" onclick="showSection('analyticsSku')">SKU</div>
+    <div class="card" onclick="showSection('analyticsStates')">States</div>
+  </div>
+
+  <button class="btn" onclick="showSection('home')">Back</button>
+</div>
+
+  <!-- ANALYTICS: MULTI UNITS -->
+<div class="container hidden" id="analyticsUnits">
+  <h2>Multi Units Analytics</h2>
+
+  <p style="text-align:center; font-weight:600; margin-top:20px;">
+    Data coming soon
+  </p>
+
+  <button class="btn" onclick="showSection('analytics')">
+    Back to Analytics
+  </button>
+</div>
+
+  <!-- ANALYTICS: SKU -->
+<div class="container hidden" id="analyticsSku">
+  <h2>SKU Analytics</h2>
+
+  <p style="text-align:center; font-weight:600; margin-top:20px;">
+    Data coming soon
+  </p>
+
+  <button class="btn" onclick="showSection('analytics')">
+    Back to Analytics
+  </button>
+</div>
+
+  <!-- ANALYTICS: STATES -->
+<div class="container hidden" id="analyticsStates">
+  <h2>States Analytics</h2>
+
+  <p style="text-align:center; font-weight:600; margin-top:20px;">
+    Data coming soon
+  </p>
+
+  <button class="btn" onclick="showSection('analytics')">
+    Back to Analytics
+  </button>
+</div>
+
 
 <!-- SALES MAIN PAGE -->
 <div class="container hidden" id="sales">
@@ -2478,6 +2532,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
