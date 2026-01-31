@@ -334,29 +334,44 @@ body {
   </button>
 </div>
 
-  <!-- ANALYTICS: STATES - SHOPIFY -->
+<!-- ANALYTICS: STATES - SHOPIFY -->
 <div class="container hidden" id="analyticsStatesShopify">
   <h2>Shopify – States</h2>
 
-  <p style="text-align:center; font-weight:600; margin-top:20px;">
-    State-wise Shopify data will appear here
-  </p>
-
-  <!-- Map placeholder -->
-  <div style="height:360px; margin-top:30px; background:#f0f2f5; border-radius:12px;
-              display:flex; align-items:center; justify-content:center; color:#777;">
-    India map placeholder
+  <!-- Date Filters -->
+  <div class="filters">
+    From: <input type="date" id="ssShopifyFrom">
+    To: <input type="date" id="ssShopifyTo">
+    <button class="btn" onclick="loadShopifyStates()">Apply</button>
+    <button class="btn" style="background:#0f915a;" onclick="exportShopifyStates()">Export</button>
   </div>
 
-  <!-- List placeholder -->
-  <div style="margin-top:30px; text-align:center; color:#777;">
-    State-wise quantity list placeholder
+  <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:30px; margin-top:30px; align-items:start;">
+
+    <!-- MAP -->
+    <div id="shopifyStatesMap"
+         style="height:420px; background:#f4f4f4; border-radius:12px;"></div>
+
+    <!-- TABLE -->
+    <table id="shopifyStatesTable">
+      <thead>
+        <tr>
+          <th>STATE</th>
+          <th>QTY</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="2">Loading...</td></tr>
+      </tbody>
+    </table>
+
   </div>
 
   <button class="btn" onclick="showSection('analyticsStates')">
     Back to States
   </button>
 </div>
+
 
 
 
@@ -2541,6 +2556,168 @@ rows.forEach(r => {
   }
 })();
 
+  const SHOPIFY_STATES_SHEET_ID = '1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJk';
+const SHOPIFY_STATES_TAB = 'Orders_API';
+
+let shopifyStatesCache = [];
+
+  const STATE_MAP = {
+  MH: 'Maharashtra',
+  KA: 'Karnataka',
+  TS: 'Telangana',
+  UP: 'Uttar Pradesh',
+  AP: 'Andhra Pradesh',
+  TN: 'Tamil Nadu',
+  DL: 'Delhi',
+  GJ: 'Gujarat',
+  HR: 'Haryana',
+  RJ: 'Rajasthan',
+  KL: 'Kerala',
+  PB: 'Punjab',
+  WB: 'West Bengal',
+  MP: 'Madhya Pradesh',
+  AS: 'Assam',
+  JK: 'Jammu and Kashmir',
+  CG: 'Chhattisgarh',
+  OR: 'Odisha',
+  BR: 'Bihar',
+  JH: 'Jharkhand',
+  UK: 'Uttarakhand',
+  GA: 'Goa',
+  AR: 'Arunachal Pradesh',
+  HP: 'Himachal Pradesh',
+  TR: 'Tripura',
+  NL: 'Nagaland',
+  SK: 'Sikkim',
+  CH: 'Chandigarh',
+  AN: 'Andaman and Nicobar Islands',
+  ML: 'Meghalaya',
+  PY: 'Puducherry',
+  MZ: 'Mizoram'
+};
+
+function normalizeState(val) {
+  if (!val) return null;
+  const s = val.toString().trim();
+  if (STATE_MAP[s]) return STATE_MAP[s];
+  return s; // already full name
+}
+
+  function parseDDMMYYYY(val) {
+  if (!val) return null;
+  const [d, m, y] = val.split('/');
+  return new Date(y, m - 1, d);
+}
+
+  async function loadShopifyStates() {
+  const fromVal = document.getElementById('ssShopifyFrom').value;
+  const toVal = document.getElementById('ssShopifyTo').value;
+
+  const tbody = document.querySelector('#shopifyStatesTable tbody');
+  tbody.innerHTML = '<tr><td colspan="2">Loading...</td></tr>';
+
+  const fromDate = new Date(fromVal);
+  const toDate = new Date(toVal);
+  fromDate.setHours(0,0,0,0);
+  toDate.setHours(23,59,59,999);
+
+  const url = `https://docs.google.com/spreadsheets/d/${SHOPIFY_STATES_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHOPIFY_STATES_TAB)}`;
+  const res = await fetch(url);
+  const text = await res.text();
+  const json = JSON.parse(text.substring(47).slice(0, -2));
+
+  const cols = json.table.cols.map(c => c.label);
+  const rows = json.table.rows;
+
+  const dateIdx = cols.indexOf('Date');
+  const orderIdx = cols.indexOf('Order Number');
+  const stateIdx = cols.indexOf('Billing State');
+
+  const orderSeen = new Set();
+  const stateQty = {};
+
+  rows.forEach(r => {
+    if (!r.c[dateIdx] || !r.c[orderIdx] || !r.c[stateIdx]) return;
+
+    const rowDate = parseDDMMYYYY(r.c[dateIdx].v);
+    if (!rowDate || rowDate < fromDate || rowDate > toDate) return;
+
+    const orderNo = r.c[orderIdx].v;
+    if (orderSeen.has(orderNo)) return;
+    orderSeen.add(orderNo);
+
+    const state = normalizeState(r.c[stateIdx].v);
+    if (!state) return;
+
+    stateQty[state] = (stateQty[state] || 0) + 1;
+  });
+
+  shopifyStatesCache = Object.entries(stateQty)
+    .map(([state, qty]) => ({ state, qty }))
+    .sort((a,b) => b.qty - a.qty);
+
+  renderShopifyStatesTable();
+  renderShopifyStatesMap();
+}
+
+  function renderShopifyStatesTable() {
+  const tbody = document.querySelector('#shopifyStatesTable tbody');
+  if (!shopifyStatesCache.length) {
+    tbody.innerHTML = '<tr><td colspan="2">No data</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = shopifyStatesCache
+    .map(r => `<tr><td>${r.state}</td><td>${r.qty}</td></tr>`)
+    .join('');
+}
+
+  function renderShopifyStatesMap() {
+  const max = Math.max(...shopifyStatesCache.map(r => r.qty));
+  const container = document.getElementById('shopifyStatesMap');
+  container.innerHTML = '';
+
+  // assuming your India SVG paths have data-state="Maharashtra" etc
+  document.querySelectorAll('#shopifyStatesMap svg [data-state]')
+    .forEach(el => {
+      const stateName = el.getAttribute('data-state');
+      const rec = shopifyStatesCache.find(s => s.state === stateName);
+      const qty = rec ? rec.qty : 0;
+      const intensity = max ? Math.round((qty / max) * 200) : 0;
+      el.style.fill = `rgb(${intensity},${intensity},${intensity})`;
+    });
+}
+
+  function exportShopifyStates() {
+  if (!shopifyStatesCache.length) return alert('No data to export');
+
+  let csv = 'State,Qty\n';
+  shopifyStatesCache.forEach(r => {
+    csv += `${r.state},${r.qty}\n`;
+  });
+
+  const blob = new Blob([csv], { type:'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'shopify_states.csv';
+  a.click();
+}
+
+  /* Auto-load yesterday (Shopify States) */
+(function(){
+  try {
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    const yStr = y.toISOString().slice(0,10);
+    document.getElementById('ssShopifyFrom').value = yStr;
+    document.getElementById('ssShopifyTo').value = yStr;
+    setTimeout(()=>{ loadShopifyStates(); }, 120);
+  } catch(e) {
+    console.warn('Shopify States auto-load error', e);
+  }
+})();
+
+
 
 
 </script>
@@ -2902,6 +3079,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
