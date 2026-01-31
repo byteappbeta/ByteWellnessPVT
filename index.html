@@ -2262,25 +2262,33 @@ async function loadMultiUnitShopify() {
   const skuIdx = cols.indexOf('SKU');
   const qtyIdx = cols.indexOf('Qty');
 
-  const fromDate = new Date(from);
-  const toDate = new Date(to);
+const fromDate = new Date(from);
+const toDate = new Date(to);
+
+// ✅ OPTIONAL but recommended
+fromDate.setHours(0, 0, 0, 0);
+toDate.setHours(23, 59, 59, 999);
+
+
 
   const skuMap = {};
   let totalQty = 0;
 
-  rows.forEach(r => {
-    if (!r.c[dateIdx] || !r.c[skuIdx] || !r.c[qtyIdx]) return;
+rows.forEach(r => {
+  if (!r.c[dateIdx] || !r.c[skuIdx] || !r.c[qtyIdx]) return;
 
-    const rowDate = new Date(r.c[dateIdx].v.split('T')[0]);
+  const [day, month, year] = r.c[dateIdx].v.split('/');
+  const rowDate = new Date(year, month - 1, day);
 
-    if (rowDate >= fromDate && rowDate <= toDate) {
-      const sku = r.c[skuIdx].v;
-      const qty = Number(r.c[qtyIdx].v) || 0;
+  if (rowDate >= fromDate && rowDate <= toDate) {
+    const sku = r.c[skuIdx].v;
+    const qty = Number(r.c[qtyIdx].v) || 0;
 
-      skuMap[sku] = (skuMap[sku] || 0) + qty;
-      totalQty += qty;
-    }
-  });
+    skuMap[sku] = (skuMap[sku] || 0) + qty;
+    totalQty += qty;
+  }
+});
+
 
   tbody.innerHTML = '';
   muShopifyDataCache = [];
@@ -2678,6 +2686,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
