@@ -316,18 +316,48 @@ body {
   </button>
 </div>
 
-  <!-- ANALYTICS: STATES -->
+<!-- ANALYTICS: STATES -->
 <div class="container hidden" id="analyticsStates">
-  <h2>States Analytics</h2>
+  <h2>States</h2>
 
-  <p style="text-align:center; font-weight:600; margin-top:20px;">
-    Data coming soon
-  </p>
+  <div class="card-grid">
+    <div class="card amazon" onclick="showSection('analyticsStatesAmazon')">
+      Amazon
+    </div>
+    <div class="card shopify" onclick="showSection('analyticsStatesShopify')">
+      Shopify
+    </div>
+  </div>
 
   <button class="btn" onclick="showSection('analytics')">
     Back to Analytics
   </button>
 </div>
+
+  <!-- ANALYTICS: STATES - SHOPIFY -->
+<div class="container hidden" id="analyticsStatesShopify">
+  <h2>Shopify – States</h2>
+
+  <p style="text-align:center; font-weight:600; margin-top:20px;">
+    State-wise Shopify data will appear here
+  </p>
+
+  <!-- Map placeholder -->
+  <div style="height:360px; margin-top:30px; background:#f0f2f5; border-radius:12px;
+              display:flex; align-items:center; justify-content:center; color:#777;">
+    India map placeholder
+  </div>
+
+  <!-- List placeholder -->
+  <div style="margin-top:30px; text-align:center; color:#777;">
+    State-wise quantity list placeholder
+  </div>
+
+  <button class="btn" onclick="showSection('analyticsStates')">
+    Back to States
+  </button>
+</div>
+
 
 
 <!-- SALES MAIN PAGE -->
@@ -2872,6 +2902,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
