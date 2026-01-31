@@ -224,18 +224,44 @@ body {
   </button>
 </div>
 
-  <!-- ANALYTICS: MULTI UNITS - AMAZON -->
+<!-- ANALYTICS: MULTI UNITS - AMAZON -->
 <div class="container hidden" id="analyticsUnitsAmazon">
   <h2>Amazon – Multi Units</h2>
 
-  <p style="text-align:center; font-weight:600; margin-top:20px;">
-    Amazon multi-unit analytics coming soon
-  </p>
+  <!-- Date Filters -->
+  <div class="filters">
+    From: <input type="date" id="muAmazonFrom">
+    To: <input type="date" id="muAmazonTo">
+    <button class="btn" onclick="loadMultiUnitAmazon()">Apply</button>
+    <button class="btn" style="background:#0f915a;" onclick="exportMultiUnitAmazon()">Export</button>
+  </div>
+
+  <!-- Table -->
+  <table id="muAmazonTable">
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th>QTY</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td colspan="2">Loading...</td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td>TOTAL</td>
+        <td id="muAmazonTotalQty">0</td>
+      </tr>
+    </tfoot>
+  </table>
 
   <button class="btn" onclick="showSection('analyticsUnits')">
     Back to Multi Units
   </button>
 </div>
+
 
 <!-- ANALYTICS: MULTI UNITS - SHOPIFY -->
 <div class="container hidden" id="analyticsUnitsShopify">
@@ -2356,6 +2382,126 @@ Object.entries(skuMap)
 })();
 
 
+  const MU_AMAZON_SHEET_ID = '1e4Vdkw2Ms0dCxskAKbUfLk3ttqeFT_nbQDhsPtKWWhA';
+const MU_AMAZON_SHEET_NAME = 'Promotions-Summary';
+
+let muAmazonDataCache = [];
+
+  async function loadMultiUnitAmazon() {
+  const from = document.getElementById('muAmazonFrom').value;
+  const to = document.getElementById('muAmazonTo').value;
+
+  const tbody = document.querySelector('#muAmazonTable tbody');
+  const totalCell = document.getElementById('muAmazonTotalQty');
+
+  tbody.innerHTML = '<tr><td colspan="2">Loading...</td></tr>';
+  totalCell.innerText = '0';
+
+  const url = `https://docs.google.com/spreadsheets/d/${MU_AMAZON_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(MU_AMAZON_SHEET_NAME)}`;
+  const res = await fetch(url);
+  const text = await res.text();
+  const json = JSON.parse(text.substring(47).slice(0, -2));
+
+  const cols = json.table.cols.map(c => c.label);
+  const rows = json.table.rows;
+
+  const dateIdx = cols.indexOf('Date');
+  const skuIdx = cols.indexOf('Sku');
+  const qtyIdx = cols.indexOf('Qty');
+
+  const fromDate = new Date(from);
+  const toDate = new Date(to);
+
+  // normalize
+  fromDate.setHours(0, 0, 0, 0);
+  toDate.setHours(23, 59, 59, 999);
+
+  const skuMap = {};
+  let totalQty = 0;
+
+  rows.forEach(r => {
+    if (!r.c[dateIdx] || !r.c[skuIdx] || !r.c[qtyIdx]) return;
+
+    // Date format: DD/MM/YYYY
+    const [day, month, year] = r.c[dateIdx].v.split('/');
+    const rowDate = new Date(year, month - 1, day);
+
+    if (rowDate >= fromDate && rowDate <= toDate) {
+      const sku = r.c[skuIdx].v;
+      const qty = Number(r.c[qtyIdx].v) || 0;
+
+      skuMap[sku] = (skuMap[sku] || 0) + qty;
+      totalQty += qty;
+    }
+  });
+
+  tbody.innerHTML = '';
+  muAmazonDataCache = [];
+
+  if (!Object.keys(skuMap).length) {
+    tbody.innerHTML = '<tr><td colspan="2">No data found</td></tr>';
+    totalCell.innerText = '0';
+    return;
+  }
+
+  // 🔽 Sort by QTY DESC
+  Object.entries(skuMap)
+    .sort((a, b) => b[1] - a[1])
+    .forEach(([sku, qty]) => {
+      muAmazonDataCache.push({ sku, qty });
+      tbody.innerHTML += `<tr><td>${sku}</td><td>${qty}</td></tr>`;
+    });
+
+  totalCell.innerText = totalQty;
+}
+
+  function exportMultiUnitAmazon() {
+  if (!muAmazonDataCache.length) {
+    alert('No data to export');
+    return;
+  }
+
+  let csv = 'SKU,Qty\n';
+  muAmazonDataCache.forEach(r => {
+    csv += `${r.sku},${r.qty}\n`;
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'amazon_multi_units.csv';
+  a.click();
+}
+
+  /* Auto-load yesterday (Multi Units → Amazon) */
+(function () {
+  try {
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    const yStr = y.toISOString().slice(0, 10);
+
+    const fromEl = document.getElementById('muAmazonFrom');
+    const toEl = document.getElementById('muAmazonTo');
+
+    if (fromEl) fromEl.value = yStr;
+    if (toEl) toEl.value = yStr;
+
+    // tiny delay to let DOM settle
+    setTimeout(() => {
+      if (typeof loadMultiUnitAmazon === 'function') {
+        loadMultiUnitAmazon();
+      }
+    }, 120);
+
+  } catch (e) {
+    console.warn('Multi Units Amazon auto-load error', e);
+  }
+})();
+
+
+
 </script>
   
  
@@ -2715,6 +2861,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
