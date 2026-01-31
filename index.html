@@ -237,18 +237,44 @@ body {
   </button>
 </div>
 
-  <!-- ANALYTICS: MULTI UNITS - SHOPIFY -->
+<!-- ANALYTICS: MULTI UNITS - SHOPIFY -->
 <div class="container hidden" id="analyticsUnitsShopify">
   <h2>Shopify – Multi Units</h2>
 
-  <p style="text-align:center; font-weight:600; margin-top:20px;">
-    Shopify multi-unit analytics coming soon
-  </p>
+  <!-- Date Filters -->
+  <div class="filters">
+    From: <input type="date" id="muShopifyFrom">
+    To: <input type="date" id="muShopifyTo">
+    <button class="btn" onclick="loadMultiUnitShopify()">Apply</button>
+    <button class="btn" style="background:#0f915a;" onclick="exportMultiUnitShopify()">Export</button>
+  </div>
+
+  <!-- Table -->
+  <table id="muShopifyTable">
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th>QTY</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td colspan="2">Loading...</td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td>TOTAL</td>
+        <td id="muShopifyTotalQty">0</td>
+      </tr>
+    </tfoot>
+  </table>
 
   <button class="btn" onclick="showSection('analyticsUnits')">
     Back to Multi Units
   </button>
 </div>
+
 
 
   <!-- ANALYTICS: SKU -->
@@ -2208,6 +2234,93 @@ function exportShopifyCSV(){
 
 </script>
 
+<script>
+const MU_SHEET_ID = '1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJk';
+const MU_SHEET_NAME = 'Multi units';
+
+let muShopifyDataCache = [];
+
+async function loadMultiUnitShopify() {
+  const from = document.getElementById('muShopifyFrom').value;
+  const to = document.getElementById('muShopifyTo').value;
+
+  const tbody = document.querySelector('#muShopifyTable tbody');
+  const totalCell = document.getElementById('muShopifyTotalQty');
+
+  tbody.innerHTML = '<tr><td colspan="2">Loading...</td></tr>';
+  totalCell.innerText = '0';
+
+  const url = `https://docs.google.com/spreadsheets/d/${MU_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(MU_SHEET_NAME)}`;
+  const res = await fetch(url);
+  const text = await res.text();
+  const json = JSON.parse(text.substring(47).slice(0, -2));
+
+  const cols = json.table.cols.map(c => c.label);
+  const rows = json.table.rows;
+
+  const dateIdx = cols.indexOf('Date');
+  const skuIdx = cols.indexOf('SKU');
+  const qtyIdx = cols.indexOf('Qty');
+
+  const fromDate = new Date(from);
+  const toDate = new Date(to);
+
+  const skuMap = {};
+  let totalQty = 0;
+
+  rows.forEach(r => {
+    if (!r.c[dateIdx] || !r.c[skuIdx] || !r.c[qtyIdx]) return;
+
+    const rowDate = new Date(r.c[dateIdx].v.split('T')[0]);
+
+    if (rowDate >= fromDate && rowDate <= toDate) {
+      const sku = r.c[skuIdx].v;
+      const qty = Number(r.c[qtyIdx].v) || 0;
+
+      skuMap[sku] = (skuMap[sku] || 0) + qty;
+      totalQty += qty;
+    }
+  });
+
+  tbody.innerHTML = '';
+  muShopifyDataCache = [];
+
+  if (!Object.keys(skuMap).length) {
+    tbody.innerHTML = '<tr><td colspan="2">No data found</td></tr>';
+    totalCell.innerText = '0';
+    return;
+  }
+
+  Object.entries(skuMap).forEach(([sku, qty]) => {
+    muShopifyDataCache.push({ sku, qty });
+    tbody.innerHTML += `<tr><td>${sku}</td><td>${qty}</td></tr>`;
+  });
+
+  totalCell.innerText = totalQty;
+}
+
+  function exportMultiUnitShopify() {
+  if (!muShopifyDataCache.length) {
+    alert('No data to export');
+    return;
+  }
+
+  let csv = 'SKU,Qty\n';
+  muShopifyDataCache.forEach(r => {
+    csv += `${r.sku},${r.qty}\n`;
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'shopify_multi_units.csv';
+  a.click();
+}
+
+
+  
  
 <script>
   
@@ -2565,6 +2678,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
