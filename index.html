@@ -1968,24 +1968,34 @@ async function loadShopifyDashboard(){
     }
 
     // Build left table rows (union of SKUs from Orders_API and Master SKUs from Sheet1 RTO)
-    const allKeys = [...new Set([...skuMap.keys(), ...rtoUnits.keys()])];
-    let totalQty = 0, totalGross = 0, totalRto = 0;
-    let rowsHTML = '';
+const allKeys = [...new Set([...skuMap.keys(), ...rtoUnits.keys()])];
 
-    allKeys.forEach(k => {
-      const qty = skuMap.get(k)?.qty || 0;
-      const gross = skuMap.get(k)?.gross || 0;
-      const rto = rtoUnits.get(k) || 0;
-      rowsHTML += `<tr>
-        <td style="text-align:center;">${k}</td>
-        <td style="text-align:center;">${fmtINR(qty)}</td>
-        <td style="text-align:center;">${fmtINR(gross)}</td>
-        <td style="text-align:center;">${fmtINR(rto)}</td>
-      </tr>`;
-      totalQty += qty;
-      totalGross += gross;
-      totalRto += rto;
-    });
+// build sortable rows
+const rowsArr = allKeys.map(k => ({
+  sku: k,
+  qty: skuMap.get(k)?.qty || 0,
+  gross: skuMap.get(k)?.gross || 0,
+  rto: rtoUnits.get(k) || 0
+}));
+
+// 🔽 SORT BY QTY DESCENDING
+rowsArr.sort((a, b) => b.qty - a.qty);
+
+let totalQty = 0, totalGross = 0, totalRto = 0;
+let rowsHTML = '';
+
+rowsArr.forEach(r => {
+  rowsHTML += `<tr>
+    <td style="text-align:center;">${r.sku}</td>
+    <td style="text-align:center;">${fmtINR(r.qty)}</td>
+    <td style="text-align:center;">${fmtINR(r.gross)}</td>
+    <td style="text-align:center;">${fmtINR(r.rto)}</td>
+  </tr>`;
+  totalQty += r.qty;
+  totalGross += r.gross;
+  totalRto += r.rto;
+});
+
 
     tBody.innerHTML = rowsHTML || '<tr><td colspan="4" style="text-align:center;padding:24px;">No data.</td></tr>';
     document.querySelector('#shopifyTable tfoot').innerHTML = `<tr>
@@ -2862,6 +2872,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
