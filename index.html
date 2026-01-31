@@ -205,18 +205,51 @@ body {
   <button class="btn" onclick="showSection('home')">Back</button>
 </div>
 
-  <!-- ANALYTICS: MULTI UNITS -->
+ <!-- ANALYTICS: MULTI UNITS -->
 <div class="container hidden" id="analyticsUnits">
-  <h2>Multi Units Analytics</h2>
+  <h2>Multi Units</h2>
 
-  <p style="text-align:center; font-weight:600; margin-top:20px;">
-    Data coming soon
-  </p>
+  <div class="card-grid">
+    <div class="card amazon" onclick="showSection('analyticsUnitsAmazon')">
+      Amazon
+    </div>
+
+    <div class="card shopify" onclick="showSection('analyticsUnitsShopify')">
+      Shopify
+    </div>
+  </div>
 
   <button class="btn" onclick="showSection('analytics')">
     Back to Analytics
   </button>
 </div>
+
+  <!-- ANALYTICS: MULTI UNITS - AMAZON -->
+<div class="container hidden" id="analyticsUnitsAmazon">
+  <h2>Amazon – Multi Units</h2>
+
+  <p style="text-align:center; font-weight:600; margin-top:20px;">
+    Amazon multi-unit analytics coming soon
+  </p>
+
+  <button class="btn" onclick="showSection('analyticsUnits')">
+    Back to Multi Units
+  </button>
+</div>
+
+  <!-- ANALYTICS: MULTI UNITS - SHOPIFY -->
+<div class="container hidden" id="analyticsUnitsShopify">
+  <h2>Shopify – Multi Units</h2>
+
+  <p style="text-align:center; font-weight:600; margin-top:20px;">
+    Shopify multi-unit analytics coming soon
+  </p>
+
+  <button class="btn" onclick="showSection('analyticsUnits')">
+    Back to Multi Units
+  </button>
+</div>
+
 
   <!-- ANALYTICS: SKU -->
 <div class="container hidden" id="analyticsSku">
@@ -2532,6 +2565,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
