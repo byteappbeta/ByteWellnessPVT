@@ -2299,10 +2299,13 @@ rows.forEach(r => {
     return;
   }
 
-  Object.entries(skuMap).forEach(([sku, qty]) => {
+Object.entries(skuMap)
+  .sort((a, b) => b[1] - a[1])   // 🔽 QTY descending
+  .forEach(([sku, qty]) => {
     muShopifyDataCache.push({ sku, qty });
     tbody.innerHTML += `<tr><td>${sku}</td><td>${qty}</td></tr>`;
   });
+
 
   totalCell.innerText = totalQty;
 }
@@ -2326,6 +2329,32 @@ rows.forEach(r => {
   a.download = 'shopify_multi_units.csv';
   a.click();
 }
+
+  /* Auto-load yesterday (Multi Units → Shopify) */
+(function () {
+  try {
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    const yStr = y.toISOString().slice(0, 10);
+
+    const fromEl = document.getElementById('muShopifyFrom');
+    const toEl = document.getElementById('muShopifyTo');
+
+    if (fromEl) fromEl.value = yStr;
+    if (toEl) toEl.value = yStr;
+
+    // tiny delay to let DOM settle
+    setTimeout(() => {
+      if (typeof loadMultiUnitShopify === 'function') {
+        loadMultiUnitShopify();
+      }
+    }, 120);
+
+  } catch (e) {
+    console.warn('Multi Units Shopify auto-load error', e);
+  }
+})();
+
 
 </script>
   
@@ -2686,6 +2715,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
