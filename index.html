@@ -316,116 +316,18 @@ body {
   </button>
 </div>
 
-<!-- ANALYTICS: STATES -->
+  <!-- ANALYTICS: STATES -->
 <div class="container hidden" id="analyticsStates">
-  <h2>States</h2>
+  <h2>States Analytics</h2>
 
-  <div class="card-grid">
-    <div class="card amazon" onclick="showSection('analyticsStatesAmazon')">
-      Amazon
-    </div>
-    <div class="card shopify" onclick="showSection('analyticsStatesShopify')">
-      Shopify
-    </div>
-  </div>
+  <p style="text-align:center; font-weight:600; margin-top:20px;">
+    Data coming soon
+  </p>
 
   <button class="btn" onclick="showSection('analytics')">
     Back to Analytics
   </button>
 </div>
-
-<!-- ANALYTICS: STATES - SHOPIFY -->
-<div class="container hidden" id="analyticsStatesShopify">
-  <h2>Shopify – States</h2>
-
-  <!-- Date Filters -->
-  <div class="filters">
-    From: <input type="date" id="ssShopifyFrom">
-    To: <input type="date" id="ssShopifyTo">
-    <button class="btn" onclick="loadShopifyStates()">Apply</button>
-    <button class="btn" style="background:#0f915a;" onclick="exportShopifyStates()">Export</button>
-  </div>
-
-  <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:30px; margin-top:30px; align-items:start;">
-
-    <!-- MAP -->
-<div id="shopifyStatesMap"
-     style="height:420px; border-radius:12px; overflow:hidden; background:#f5f5f5;">
-  <!-- INDIA MAP SVG -->
-  <svg viewBox="0 0 1000 1000" width="100%" height="100%"
-       xmlns="http://www.w3.org/2000/svg"
-       style="cursor:pointer">
-
-    <!-- NORTH -->
-    <path data-state="Jammu and Kashmir" d="M330 70 L450 60 L520 120 L470 190 L360 160 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Himachal Pradesh" d="M360 160 L470 190 L440 240 L360 220 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Punjab" d="M300 200 L360 220 L340 260 L290 250 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Haryana" d="M340 260 L400 260 L420 300 L360 300 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Delhi" d="M405 285 L420 285 L420 300 L405 300 Z" fill="#ccc"/>
-
-    <!-- WEST -->
-    <path data-state="Rajasthan" d="M200 260 L360 300 L320 420 L180 380 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Gujarat" d="M160 420 L300 460 L260 560 L140 520 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Maharashtra" d="M300 460 L480 480 L460 620 L280 600 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Goa" d="M300 620 L320 620 L320 640 L300 640 Z" fill="#ccc"/>
-
-    <!-- SOUTH -->
-    <path data-state="Karnataka" d="M320 620 L460 620 L440 740 L320 720 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Kerala" d="M320 720 L340 860 L300 860 L280 740 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Tamil Nadu" d="M440 740 L540 860 L420 880 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Andhra Pradesh" d="M480 620 L620 700 L540 780 L440 740 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Telangana" d="M480 560 L560 600 L520 640 L460 620 Z" fill="#eee" stroke="#fff"/>
-
-    <!-- CENTRAL -->
-    <path data-state="Madhya Pradesh" d="M360 300 L520 320 L480 480 L320 420 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Chhattisgarh" d="M520 320 L620 360 L600 500 L480 480 Z" fill="#eee" stroke="#fff"/>
-
-    <!-- EAST -->
-    <path data-state="Uttar Pradesh" d="M420 260 L620 260 L640 320 L520 320 L360 300 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Bihar" d="M640 300 L720 300 L720 340 L640 340 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Jharkhand" d="M640 340 L720 340 L720 380 L640 380 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="West Bengal" d="M720 340 L760 420 L720 500 L700 420 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Odisha" d="M620 380 L720 420 L700 520 L600 500 Z" fill="#eee" stroke="#fff"/>
-
-    <!-- NORTH EAST -->
-    <path data-state="Assam" d="M760 360 L860 360 L880 400 L780 420 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Meghalaya" d="M760 420 L820 420 L820 440 L760 440 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Tripura" d="M820 460 L840 460 L840 500 L820 500 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Mizoram" d="M840 500 L860 520 L840 560 L820 540 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Manipur" d="M860 440 L900 460 L880 500 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Nagaland" d="M900 420 L940 440 L920 480 Z" fill="#eee" stroke="#fff"/>
-    <path data-state="Arunachal Pradesh" d="M860 300 L960 320 L940 360 L840 360 Z" fill="#eee" stroke="#fff"/>
-
-  </svg>
-</div>
-
-
-    <!-- TABLE -->
-<table id="shopifyStatesTable">
-  <thead>
-    <tr>
-      <th>STATE</th>
-      <th>QTY</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-  <tfoot>
-    <tr>
-      <td><b>TOTAL</b></td>
-      <td id="shopifyStatesTotal"><b>0</b></td>
-    </tr>
-  </tfoot>
-</table>
-
-
-  </div>
-
-  <button class="btn" onclick="showSection('analyticsStates')">
-    Back to States
-  </button>
-</div>
-
-
 
 
 <!-- SALES MAIN PAGE -->
@@ -2609,180 +2511,6 @@ rows.forEach(r => {
   }
 })();
 
-  const SHOPIFY_STATES_SHEET_ID = '1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJk';
-const SHOPIFY_STATES_TAB = 'Orders_API';
-
-let shopifyStatesCache = [];
-
-  const STATE_MAP = {
-  MH: 'Maharashtra',
-  KA: 'Karnataka',
-  TS: 'Telangana',
-  UP: 'Uttar Pradesh',
-  AP: 'Andhra Pradesh',
-  TN: 'Tamil Nadu',
-  DL: 'Delhi',
-  GJ: 'Gujarat',
-  HR: 'Haryana',
-  RJ: 'Rajasthan',
-  KL: 'Kerala',
-  PB: 'Punjab',
-  WB: 'West Bengal',
-  MP: 'Madhya Pradesh',
-  AS: 'Assam',
-  JK: 'Jammu and Kashmir',
-  CG: 'Chhattisgarh',
-  OR: 'Odisha',
-  BR: 'Bihar',
-  JH: 'Jharkhand',
-  UK: 'Uttarakhand',
-  GA: 'Goa',
-  AR: 'Arunachal Pradesh',
-  HP: 'Himachal Pradesh',
-  TR: 'Tripura',
-  NL: 'Nagaland',
-  SK: 'Sikkim',
-  CH: 'Chandigarh',
-  AN: 'Andaman and Nicobar Islands',
-  ML: 'Meghalaya',
-  PY: 'Puducherry',
-  MZ: 'Mizoram'
-};
-
-function normalizeState(val) {
-  if (!val) return null;
-  const s = val.toString().trim();
-  if (STATE_MAP[s]) return STATE_MAP[s];
-  return s; // already full name
-}
-
-  function parseDDMMYYYY(val) {
-  if (!val) return null;
-  const [d, m, y] = val.split('/');
-  return new Date(y, m - 1, d);
-}
-
-  async function loadShopifyStates() {
-  const fromVal = document.getElementById('ssShopifyFrom').value;
-  const toVal = document.getElementById('ssShopifyTo').value;
-
-  const tbody = document.querySelector('#shopifyStatesTable tbody');
-  tbody.innerHTML = '<tr><td colspan="2">Loading...</td></tr>';
-
-  const fromDate = new Date(fromVal);
-  const toDate = new Date(toVal);
-  fromDate.setHours(0,0,0,0);
-  toDate.setHours(23,59,59,999);
-
-  const url = `https://docs.google.com/spreadsheets/d/${SHOPIFY_STATES_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHOPIFY_STATES_TAB)}`;
-  const res = await fetch(url);
-  const text = await res.text();
-  const json = JSON.parse(text.substring(47).slice(0, -2));
-
-  const cols = json.table.cols.map(c => c.label);
-  const rows = json.table.rows;
-
-  const dateIdx = cols.indexOf('Date');
-  const orderIdx = cols.indexOf('Order Number');
-  const stateIdx = cols.indexOf('Billing State');
-
-  const orderSeen = new Set();
-  const stateQty = {};
-
-  rows.forEach(r => {
-    if (!r.c[dateIdx] || !r.c[orderIdx] || !r.c[stateIdx]) return;
-
-    const rowDate = parseDDMMYYYY(r.c[dateIdx].v);
-    if (!rowDate || rowDate < fromDate || rowDate > toDate) return;
-
-    const orderNo = r.c[orderIdx].v;
-    if (orderSeen.has(orderNo)) return;
-    orderSeen.add(orderNo);
-
-    const state = normalizeState(r.c[stateIdx].v);
-    if (!state) return;
-
-    stateQty[state] = (stateQty[state] || 0) + 1;
-  });
-
-  shopifyStatesCache = Object.entries(stateQty)
-    .map(([state, qty]) => ({ state, qty }))
-    .sort((a,b) => b.qty - a.qty);
-
-  renderShopifyStatesTable();
-  renderShopifyStatesMap();
-}
-
-function renderShopifyStatesTable() {
-  const tbody = document.querySelector('#shopifyStatesTable tbody');
-  const totalEl = document.getElementById('shopifyStatesTotal');
-
-  if (!shopifyStatesCache.length) {
-    tbody.innerHTML = '<tr><td colspan="2">No data</td></tr>';
-    totalEl.innerText = '0';
-    return;
-  }
-
-  let total = 0;
-
-  tbody.innerHTML = shopifyStatesCache.map(r => {
-    total += r.qty;
-    return `<tr>
-      <td>${r.state}</td>
-      <td>${r.qty}</td>
-    </tr>`;
-  }).join('');
-
-  totalEl.innerText = total;
-}
-
-
-  function renderShopifyStatesMap() {
-  const max = Math.max(...shopifyStatesCache.map(r => r.qty));
-  const container = document.getElementById('shopifyStatesMap');
-  container.innerHTML = '';
-
-  // assuming your India SVG paths have data-state="Maharashtra" etc
-  document.querySelectorAll('#shopifyStatesMap svg [data-state]')
-    .forEach(el => {
-      const stateName = el.getAttribute('data-state');
-      const rec = shopifyStatesCache.find(s => s.state === stateName);
-      const qty = rec ? rec.qty : 0;
-      const intensity = max ? Math.round((qty / max) * 200) : 0;
-      el.style.fill = `rgb(${intensity},${intensity},${intensity})`;
-    });
-}
-
-  function exportShopifyStates() {
-  if (!shopifyStatesCache.length) return alert('No data to export');
-
-  let csv = 'State,Qty\n';
-  shopifyStatesCache.forEach(r => {
-    csv += `${r.state},${r.qty}\n`;
-  });
-
-  const blob = new Blob([csv], { type:'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'shopify_states.csv';
-  a.click();
-}
-
-  /* Auto-load yesterday (Shopify States) */
-(function(){
-  try {
-    const y = new Date(); y.setDate(y.getDate() - 1);
-    const yStr = y.toISOString().slice(0,10);
-    document.getElementById('ssShopifyFrom').value = yStr;
-    document.getElementById('ssShopifyTo').value = yStr;
-    setTimeout(()=>{ loadShopifyStates(); }, 120);
-  } catch(e) {
-    console.warn('Shopify States auto-load error', e);
-  }
-})();
-
-
 
 
 </script>
@@ -3144,10 +2872,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
-
-
-
-
 
 
 
