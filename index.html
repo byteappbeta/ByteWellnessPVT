@@ -2271,8 +2271,11 @@ function exportShopifyCSV(){
 </script>
 
 <script>
+
+
+
 const MU_SHEET_ID = '1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJk';
-const MU_SHEET_NAME = 'Multi units';
+const MU_SHEET_NAME = 'Only-Multi-units';
 
 let muShopifyDataCache = [];
 
@@ -2295,36 +2298,33 @@ async function loadMultiUnitShopify() {
   const rows = json.table.rows;
 
   const dateIdx = cols.indexOf('Date');
-  const skuIdx = cols.indexOf('SKU');
+  const skuIdx = cols.indexOf('Sku') !== -1 ? cols.indexOf('Sku') : cols.indexOf('SKU');
   const qtyIdx = cols.indexOf('Qty');
 
-const fromDate = new Date(from);
-const toDate = new Date(to);
+  const fromDate = new Date(from);
+  const toDate = new Date(to);
 
-// ✅ OPTIONAL but recommended
-fromDate.setHours(0, 0, 0, 0);
-toDate.setHours(23, 59, 59, 999);
-
-
+  fromDate.setHours(0, 0, 0, 0);
+  toDate.setHours(23, 59, 59, 999);
 
   const skuMap = {};
   let totalQty = 0;
 
-rows.forEach(r => {
-  if (!r.c[dateIdx] || !r.c[skuIdx] || !r.c[qtyIdx]) return;
+  rows.forEach(r => {
+    if (!r.c[dateIdx] || !r.c[skuIdx] || !r.c[qtyIdx]) return;
 
-  const [day, month, year] = r.c[dateIdx].v.split('/');
-  const rowDate = new Date(year, month - 1, day);
+    const dateString = r.c[dateIdx].v;
+    const [day, month, year] = dateString.split('/');
+    const rowDate = new Date(year, month - 1, day);
 
-  if (rowDate >= fromDate && rowDate <= toDate) {
-    const sku = r.c[skuIdx].v;
-    const qty = Number(r.c[qtyIdx].v) || 0;
+    if (rowDate >= fromDate && rowDate <= toDate) {
+      const sku = r.c[skuIdx].v;
+      const qty = Number(r.c[qtyIdx].v) || 0;
 
-    skuMap[sku] = (skuMap[sku] || 0) + qty;
-    totalQty += qty;
-  }
-});
-
+      skuMap[sku] = (skuMap[sku] || 0) + qty;
+      totalQty += qty;
+    }
+  });
 
   tbody.innerHTML = '';
   muShopifyDataCache = [];
@@ -2335,18 +2335,17 @@ rows.forEach(r => {
     return;
   }
 
-Object.entries(skuMap)
-  .sort((a, b) => b[1] - a[1])   // 🔽 QTY descending
-  .forEach(([sku, qty]) => {
-    muShopifyDataCache.push({ sku, qty });
-    tbody.innerHTML += `<tr><td>${sku}</td><td>${qty}</td></tr>`;
-  });
-
+  Object.entries(skuMap)
+    .sort((a, b) => b[1] - a[1])
+    .forEach(([sku, qty]) => {
+      muShopifyDataCache.push({ sku, qty });
+      tbody.innerHTML += `<tr><td>${sku}</td><td>${qty}</td></tr>`;
+    });
 
   totalCell.innerText = totalQty;
 }
 
-  function exportMultiUnitShopify() {
+function exportMultiUnitShopify() {
   if (!muShopifyDataCache.length) {
     alert('No data to export');
     return;
@@ -2366,7 +2365,7 @@ Object.entries(skuMap)
   a.click();
 }
 
-  /* Auto-load yesterday (Multi Units → Shopify) */
+/* Auto-load yesterday */
 (function () {
   try {
     const y = new Date();
@@ -2379,7 +2378,6 @@ Object.entries(skuMap)
     if (fromEl) fromEl.value = yStr;
     if (toEl) toEl.value = yStr;
 
-    // tiny delay to let DOM settle
     setTimeout(() => {
       if (typeof loadMultiUnitShopify === 'function') {
         loadMultiUnitShopify();
@@ -2391,6 +2389,14 @@ Object.entries(skuMap)
   }
 })();
 
+
+
+
+
+
+
+
+  
 
   const MU_AMAZON_SHEET_ID = '1e4Vdkw2Ms0dCxskAKbUfLk3ttqeFT_nbQDhsPtKWWhA';
 const MU_AMAZON_SHEET_NAME = 'Promotions-Summary';
@@ -2872,6 +2878,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
