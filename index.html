@@ -665,6 +665,10 @@ async function showWarehouse(name) {
   });
 }
 
+
+
+
+  
 /* ===== SUMMARY CONFIG ===== */
 const SUMMARY_CONFIG = {
   masterSheet: "Master",
@@ -681,7 +685,7 @@ const SUMMARY_CONFIG = {
 };
 
 
-/* ===== ALL WAREHOUSES (DYNAMIC + OVERRIDE SAFE) ===== */
+/* ===== ALL WAREHOUSES ===== */
 async function showAllWarehouses() {
   removeWarehouseControls();
   showSection("warehouse");
@@ -694,7 +698,6 @@ async function showAllWarehouses() {
   const thead = table.querySelector("thead");
   const tbody = table.querySelector("tbody");
 
-  // Controls
   const oldWrapper = document.getElementById("warehouseControls");
   if (oldWrapper) oldWrapper.remove();
 
@@ -725,7 +728,7 @@ async function showAllWarehouses() {
 
   try {
 
-    /* ===== FETCH ===== */
+    /* ===== FETCH DATA ===== */
     const fetchPromises = [
       fetchWarehouseData(SUMMARY_CONFIG.masterSheet),
       fetchWarehouseData(SUMMARY_CONFIG.amazonSheet),
@@ -746,7 +749,6 @@ async function showAllWarehouses() {
     /* ===== MASTER MAP ===== */
     function buildMasterMap(res) {
       const hdrs = res.headers.map(h => (h || "").toLowerCase().trim());
-
       const skuI = hdrs.findIndex(h => h.includes("sku"));
       const labelledI = hdrs.findIndex(h => h.includes("labelled") && !h.includes("non"));
       const nonLabelledI = hdrs.findIndex(h => h.includes("non"));
@@ -758,8 +760,8 @@ async function showAllWarehouses() {
         if (!sku) return;
 
         map.set(sku, {
-          labelled: parseInt(row[labelledI]) || 0,
-          nonlabelled: parseInt(row[nonLabelledI]) || 0
+          labelled: row[labelledI] || "0",
+          nonlabelled: row[nonLabelledI] || "0"
         });
       });
 
@@ -774,21 +776,27 @@ async function showAllWarehouses() {
       const availI = hdrs.findIndex(h => h.includes("available"));
       const saleI = hdrs.findIndex(h => h.includes("30"));
       const daysI = hdrs.findIndex(h => h.includes("days"));
+      const syncedI = hdrs.findIndex(h => h.includes("synced"));
 
       const map = new Map();
+      let syncedDate = "";
 
       res.data.forEach(row => {
         const sku = (row[skuI] || "").toString().trim();
         if (!sku) return;
 
+        if (!syncedDate && row[syncedI]) {
+          syncedDate = row[syncedI];
+        }
+
         map.set(sku, {
-          available: parseInt(row[availI]) || 0,
-          last30: parseInt(row[saleI]) || 0,
-          days: parseFloat(row[daysI]) || 0
+          available: row[availI] || "0",
+          last30: row[saleI] || "0",
+          days: row[daysI] || "0"
         });
       });
 
-      return map;
+      return { map, syncedDate };
     }
 
     /* ===== SHIPROCKET MAP ===== */
@@ -807,9 +815,9 @@ async function showAllWarehouses() {
         if (!sku) return;
 
         map.set(sku, {
-          available: parseInt(row[availI]) || 0,
-          last30: parseInt(row[saleI]) || 0,
-          days: parseFloat(row[daysI]) || 0
+          available: row[availI] || "0",
+          last30: row[saleI] || "0",
+          days: row[daysI] || "0"
         });
       });
 
@@ -817,7 +825,10 @@ async function showAllWarehouses() {
     }
 
     const masterMap = buildMasterMap(masterRes);
-    const amazonMap = buildAmazonMap(amazonRes);
+
+    const amazonData = buildAmazonMap(amazonRes);
+    const amazonMap = amazonData.map;
+    syncedEl.innerText = "LAST SYNCED: " + (amazonData.syncedDate || "N/A");
 
     const shiprocketMaps = {};
     SUMMARY_CONFIG.shiprocketWarehouses.forEach((w, i) => {
@@ -825,13 +836,11 @@ async function showAllWarehouses() {
     });
 
     /* ===== SKU OVERRIDE LOGIC =====
-       Sheet structure:
-       A = Common SKU (display SKU)
-       B = MASTER override (optional)
-       C = SHIPROCKET override (optional)
-       D = AMAZON override (optional)
-
-       If override blank → fallback to Common SKU
+       A = Common SKU (display)
+       B = MASTER override
+       C = SHIPROCKET override
+       D = AMAZON override
+       Blank = fallback to Common SKU
     */
     const skuList = (skuRes.data || [])
       .map(row => ({
@@ -856,7 +865,6 @@ async function showAllWarehouses() {
     skuList.forEach(entry => {
 
       const displaySKU = entry.common;
-
       const masterSKU = entry.master || displaySKU;
       const shiprocketSKU = entry.shiprocket || displaySKU;
       const amazonSKU = entry.amazon || displaySKU;
@@ -876,9 +884,9 @@ async function showAllWarehouses() {
       /* Shiprocket */
       SUMMARY_CONFIG.shiprocketWarehouses.forEach(w => {
         const obj = shiprocketMaps[w.sheet].get(shiprocketSKU);
-        const days = obj?.days || 0;
 
-        const color = days < SUMMARY_CONFIG.threshold
+        const daysValue = parseFloat(obj?.days || 0);
+        const color = (!isNaN(daysValue) && daysValue < SUMMARY_CONFIG.threshold)
           ? "#FF4D4F"
           : "#333";
 
@@ -890,8 +898,8 @@ async function showAllWarehouses() {
       });
 
       /* Amazon */
-      const amzDays = amazonObj?.days || 0;
-      const amzColor = amzDays < SUMMARY_CONFIG.threshold
+      const amzDaysValue = parseFloat(amazonObj?.days || 0);
+      const amzColor = (!isNaN(amzDaysValue) && amzDaysValue < SUMMARY_CONFIG.threshold)
         ? "#FF4D4F"
         : "#333";
 
@@ -905,8 +913,6 @@ async function showAllWarehouses() {
       tbody.insertAdjacentHTML("beforeend", rowHTML);
     });
 
-    syncedEl.innerText = "LAST SYNCED: Auto";
-
   } catch (err) {
     console.error(err);
     tbody.innerHTML =
@@ -915,17 +921,14 @@ async function showAllWarehouses() {
 }
 
 
-
-   /* ===== EXPORT FUNCTION (with synced date) ===== */
+/* ===== EXPORT FUNCTION (WITH SYNCED DATE) ===== */
 function exportAllWarehouses() {
   const table = document.querySelector("#warehouse table");
   const syncedText = document.getElementById("lastSynced").innerText || "";
   let csv = "";
 
-  // include last synced info at the top
   csv += `"${syncedText.replace(/"/g, '""')}"\n\n`;
 
-  // now export the visible table
   const rows = table.querySelectorAll("tr");
   rows.forEach(row => {
     const cols = row.querySelectorAll("th,td");
@@ -934,12 +937,13 @@ function exportAllWarehouses() {
     csv += arr.join(",") + "\n";
   });
 
-  // download file
   const blob = new Blob([csv], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
+
   const syncDateMatch = syncedText.match(/\d{2}-\d{2}-\d{4}/);
   const syncDate = syncDateMatch ? syncDateMatch[0] : "unknown";
+
   a.href = url;
   a.download = `All_Warehouses_${syncDate}.csv`;
   a.click();
@@ -2891,6 +2895,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
