@@ -680,6 +680,8 @@ const SUMMARY_CONFIG = {
   threshold: 14
 };
 
+  console.log(SUMMARY_CONFIG);
+
 
 /* ====== ALL-IN-ONE WAREHOUSE (SUMMARY VIEW + EXPORT + SKU OVERRIDES) ====== */
 async function showAllWarehouses() {
@@ -727,8 +729,8 @@ async function showAllWarehouses() {
   try {
     // 1️⃣ Fetch data dynamically
     const fetchPromises = [
-      fetchWarehouseData(SUMMARY_CONFIG.master.sheet),
-      fetchWarehouseData(SUMMARY_CONFIG.amazon.sheet),
+      fetchWarehouseData(SUMMARY_CONFIG.masterSheet),
+      fetchWarehouseData(SUMMARY_CONFIG.amazonSheet),
       fetchWarehouseData("All warehouses SKU")
     ];
 
@@ -2844,6 +2846,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
