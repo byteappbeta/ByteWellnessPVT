@@ -745,6 +745,7 @@ async function showAllWarehouses() {
 
     // 2️⃣ Helper map builder
     function buildStandardMap(res) {
+      console.log("Sheet Headers:", res.headers);
       const hdrs = res.headers.map(h => (h || "").toLowerCase().trim());
       const skuI = hdrs.indexOf("sku");
       const availI = hdrs.indexOf("available");
@@ -2812,6 +2813,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
