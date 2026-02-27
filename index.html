@@ -665,7 +665,7 @@ async function showWarehouse(name) {
   });
 }
 
-  /* ===== SUMMARY CONFIG ===== */
+/* ===== SUMMARY CONFIG ===== */
 const SUMMARY_CONFIG = {
   masterSheet: "Master",
 
@@ -680,10 +680,8 @@ const SUMMARY_CONFIG = {
   threshold: 14
 };
 
-  console.log(SUMMARY_CONFIG);
 
-
-/* ====== ALL-IN-ONE WAREHOUSE (SUMMARY VIEW + EXPORT + SKU OVERRIDES) ====== */
+/* ===== ALL WAREHOUSES (DYNAMIC + OVERRIDE SAFE) ===== */
 async function showAllWarehouses() {
   removeWarehouseControls();
   showSection("warehouse");
@@ -697,7 +695,7 @@ async function showAllWarehouses() {
   const tbody = table.querySelector("tbody");
 
   // Controls
-  let oldWrapper = document.getElementById("warehouseControls");
+  const oldWrapper = document.getElementById("warehouseControls");
   if (oldWrapper) oldWrapper.remove();
 
   const wrapper = document.createElement("div");
@@ -711,7 +709,7 @@ async function showAllWarehouses() {
   const btn = document.createElement("button");
   btn.innerText = "Export CSV";
   btn.className = "export-btn";
-  btn.onclick = exportAllWarehouses;
+  btn.addEventListener("click", exportAllWarehouses);
 
   const note = document.createElement("span");
   note.innerText = "Format: Inventory [Last 30 Days Sale] (Days to Stockout)";
@@ -723,18 +721,18 @@ async function showAllWarehouses() {
   wrapper.appendChild(note);
   syncedEl.insertAdjacentElement("afterend", wrapper);
 
-  thead.innerHTML = "";
-  tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">Loading...</td></tr>`;
 
   try {
-    // 1️⃣ Fetch data dynamically
+
+    /* ===== FETCH ===== */
     const fetchPromises = [
       fetchWarehouseData(SUMMARY_CONFIG.masterSheet),
       fetchWarehouseData(SUMMARY_CONFIG.amazonSheet),
       fetchWarehouseData("All warehouses SKU")
     ];
 
-    SUMMARY_CONFIG.shiprocket.warehouses.forEach(w =>
+    SUMMARY_CONFIG.shiprocketWarehouses.forEach(w =>
       fetchPromises.push(fetchWarehouseData(w.sheet))
     );
 
@@ -745,75 +743,120 @@ async function showAllWarehouses() {
     const skuRes = results[2];
     const shiprocketResults = results.slice(3);
 
-    // 2️⃣ Helper map builder
-    function buildStandardMap(res) {
-      console.log("Sheet Headers:", res.headers);
+    /* ===== MASTER MAP ===== */
+    function buildMasterMap(res) {
       const hdrs = res.headers.map(h => (h || "").toLowerCase().trim());
-      const skuI = hdrs.indexOf("sku");
-      const availI = hdrs.indexOf("available");
-      const daysI = hdrs.indexOf("days to stockout");
-      const saleI = hdrs.indexOf("last 30 days sale");
+
+      const skuI = hdrs.findIndex(h => h.includes("sku"));
+      const labelledI = hdrs.findIndex(h => h.includes("labelled") && !h.includes("non"));
+      const nonLabelledI = hdrs.findIndex(h => h.includes("non"));
 
       const map = new Map();
+
       res.data.forEach(row => {
         const sku = (row[skuI] || "").toString().trim();
         if (!sku) return;
+
         map.set(sku, {
-          available: row[availI] || "",
-          days: row[daysI] || "",
-          last30: row[saleI] || ""
+          labelled: parseInt(row[labelledI]) || 0,
+          nonlabelled: parseInt(row[nonLabelledI]) || 0
         });
       });
+
       return map;
     }
 
-    function buildMasterMap(res) {
+    /* ===== AMAZON MAP ===== */
+    function buildAmazonMap(res) {
       const hdrs = res.headers.map(h => (h || "").toLowerCase().trim());
-      const skuI = hdrs.indexOf("sku");
-      const labI = hdrs.indexOf("labelled");
-      const nonLabI = hdrs.indexOf("non labelled");
+
+      const skuI = hdrs.findIndex(h => h.includes("sku"));
+      const availI = hdrs.findIndex(h => h.includes("available"));
+      const saleI = hdrs.findIndex(h => h.includes("30"));
+      const daysI = hdrs.findIndex(h => h.includes("days"));
 
       const map = new Map();
+
       res.data.forEach(row => {
         const sku = (row[skuI] || "").toString().trim();
         if (!sku) return;
+
         map.set(sku, {
-          labelled: row[labI] || 0,
-          nonlabelled: row[nonLabI] || 0
+          available: parseInt(row[availI]) || 0,
+          last30: parseInt(row[saleI]) || 0,
+          days: parseFloat(row[daysI]) || 0
         });
       });
+
+      return map;
+    }
+
+    /* ===== SHIPROCKET MAP ===== */
+    function buildShiprocketMap(res) {
+      const hdrs = res.headers.map(h => (h || "").toLowerCase().trim());
+
+      const skuI = hdrs.findIndex(h => h.includes("sku"));
+      const availI = hdrs.findIndex(h => h.includes("available"));
+      const saleI = hdrs.findIndex(h => h.includes("30"));
+      const daysI = hdrs.findIndex(h => h.includes("days"));
+
+      const map = new Map();
+
+      res.data.forEach(row => {
+        const sku = (row[skuI] || "").toString().trim();
+        if (!sku) return;
+
+        map.set(sku, {
+          available: parseInt(row[availI]) || 0,
+          last30: parseInt(row[saleI]) || 0,
+          days: parseFloat(row[daysI]) || 0
+        });
+      });
+
       return map;
     }
 
     const masterMap = buildMasterMap(masterRes);
-    const amazonMap = buildStandardMap(amazonRes);
+    const amazonMap = buildAmazonMap(amazonRes);
 
     const shiprocketMaps = {};
-    SUMMARY_CONFIG.shiprocket.warehouses.forEach((w, i) => {
-      shiprocketMaps[w.sheet] = buildStandardMap(shiprocketResults[i]);
+    SUMMARY_CONFIG.shiprocketWarehouses.forEach((w, i) => {
+      shiprocketMaps[w.sheet] = buildShiprocketMap(shiprocketResults[i]);
     });
 
-    // 3️⃣ Parse override sheet
-    const skuList = (skuRes.data || []).map(row => ({
-      common: row[0]?.toString().trim() || "",
-      master: row[1]?.toString().trim() || "",
-      shiprocket: row[2]?.toString().trim() || "",
-      amazon: row[3]?.toString().trim() || ""
-    })).filter(r => r.common);
+    /* ===== SKU OVERRIDE LOGIC =====
+       Sheet structure:
+       A = Common SKU (display SKU)
+       B = MASTER override (optional)
+       C = SHIPROCKET override (optional)
+       D = AMAZON override (optional)
 
-    // 4️⃣ Header Rendering
+       If override blank → fallback to Common SKU
+    */
+    const skuList = (skuRes.data || [])
+      .map(row => ({
+        common: (row[0] || "").toString().trim(),
+        master: (row[1] || "").toString().trim(),
+        shiprocket: (row[2] || "").toString().trim(),
+        amazon: (row[3] || "").toString().trim()
+      }))
+      .filter(r => r.common);
+
+    /* ===== HEADER ===== */
     let headerHTML = `<tr><th>SKU</th><th>Master</th>`;
-    SUMMARY_CONFIG.shiprocket.warehouses.forEach(w => {
+    SUMMARY_CONFIG.shiprocketWarehouses.forEach(w => {
       headerHTML += `<th>${w.label}</th>`;
     });
-    headerHTML += `<th>${SUMMARY_CONFIG.amazon.label}</th></tr>`;
+    headerHTML += `<th>Amazon</th></tr>`;
     thead.innerHTML = headerHTML;
 
     tbody.innerHTML = "";
 
-    // 5️⃣ Row Rendering
+    /* ===== ROW RENDER ===== */
     skuList.forEach(entry => {
+
       const displaySKU = entry.common;
+
       const masterSKU = entry.master || displaySKU;
       const shiprocketSKU = entry.shiprocket || displaySKU;
       const amazonSKU = entry.amazon || displaySKU;
@@ -823,38 +866,37 @@ async function showAllWarehouses() {
 
       let rowHTML = `<tr><td>${displaySKU}</td>`;
 
-      // Master
+      /* Master */
       if (masterObj) {
-        const L = masterObj.labelled || 0;
-        const NL = masterObj.nonlabelled || 0;
-        rowHTML += `<td>${L}(L)/${NL}(NL)</td>`;
+        rowHTML += `<td>${masterObj.labelled}(L)/${masterObj.nonlabelled}(NL)</td>`;
       } else {
         rowHTML += `<td>-</td>`;
       }
 
-      // Shiprocket Warehouses
-      SUMMARY_CONFIG.shiprocket.warehouses.forEach(w => {
+      /* Shiprocket */
+      SUMMARY_CONFIG.shiprocketWarehouses.forEach(w => {
         const obj = shiprocketMaps[w.sheet].get(shiprocketSKU);
-        const days = parseFloat(obj?.days);
-        const color = (!isNaN(days) && days < SUMMARY_CONFIG.threshold)
+        const days = obj?.days || 0;
+
+        const color = days < SUMMARY_CONFIG.threshold
           ? "#FF4D4F"
           : "#333";
 
         const text = obj
-          ? `${obj.available || 0} [${obj.last30 || 0}] (${obj.days || "-"})`
+          ? `${obj.available} [${obj.last30}] (${obj.days})`
           : "-";
 
         rowHTML += `<td style="color:${color};font-weight:600;">${text}</td>`;
       });
 
-      // Amazon
-      const amzDays = parseFloat(amazonObj?.days);
-      const amzColor = (!isNaN(amzDays) && amzDays < SUMMARY_CONFIG.threshold)
+      /* Amazon */
+      const amzDays = amazonObj?.days || 0;
+      const amzColor = amzDays < SUMMARY_CONFIG.threshold
         ? "#FF4D4F"
         : "#333";
 
       const amzText = amazonObj
-        ? `${amazonObj.available || 0} [${amazonObj.last30 || 0}] (${amazonObj.days || "-"})`
+        ? `${amazonObj.available} [${amazonObj.last30}] (${amazonObj.days})`
         : "-";
 
       rowHTML += `<td style="color:${amzColor};font-weight:600;">${amzText}</td>`;
@@ -867,9 +909,12 @@ async function showAllWarehouses() {
 
   } catch (err) {
     console.error(err);
-    tbody.innerHTML = `<tr><td colspan="6" style="color:red;text-align:center;">Error loading data.</td></tr>`;
+    tbody.innerHTML =
+      `<tr><td colspan="6" style="color:red;text-align:center;">Error loading data.</td></tr>`;
   }
 }
+
+
 
    /* ===== EXPORT FUNCTION (with synced date) ===== */
 function exportAllWarehouses() {
@@ -2846,6 +2891,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
