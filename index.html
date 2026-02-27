@@ -665,10 +665,25 @@ async function showWarehouse(name) {
   });
 }
 
+  /* ===== SUMMARY CONFIG ===== */
+const SUMMARY_CONFIG = {
+  masterSheet: "Master",
+
+  shiprocketWarehouses: [
+    { sheet: "Bangalore", label: "SR-BLR" },
+    { sheet: "Mumbai", label: "SR-MUM" },
+    { sheet: "Delhi", label: "SR-DEL" }
+  ],
+
+  amazonSheet: "Amazon",
+
+  threshold: 14
+};
+
 
 /* ====== ALL-IN-ONE WAREHOUSE (SUMMARY VIEW + EXPORT + SKU OVERRIDES) ====== */
 async function showAllWarehouses() {
-  removeWarehouseControls(); // cleanup from other pages
+  removeWarehouseControls();
   showSection("warehouse");
 
   const titleEl = document.getElementById("warehouseName");
@@ -679,9 +694,9 @@ async function showAllWarehouses() {
   const thead = table.querySelector("thead");
   const tbody = table.querySelector("tbody");
 
-  // 🧩 Export button + format note (only show on All Warehouses)
+  // Controls
   let oldWrapper = document.getElementById("warehouseControls");
-  if (oldWrapper) oldWrapper.remove(); // always reset before adding a new one
+  if (oldWrapper) oldWrapper.remove();
 
   const wrapper = document.createElement("div");
   wrapper.id = "warehouseControls";
@@ -693,7 +708,6 @@ async function showAllWarehouses() {
 
   const btn = document.createElement("button");
   btn.innerText = "Export CSV";
-  btn.id = "exportAllBtn";
   btn.className = "export-btn";
   btn.onclick = exportAllWarehouses;
 
@@ -705,74 +719,38 @@ async function showAllWarehouses() {
 
   wrapper.appendChild(btn);
   wrapper.appendChild(note);
-  // Insert the wrapper right after the lastSynced element (same placement as before)
   syncedEl.insertAdjacentElement("afterend", wrapper);
 
-  // Show loading
   thead.innerHTML = "";
   tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>`;
 
   try {
-    /* 1) Fetch tabs: Master, Bangalore, Mumbai, Amazon, All warehouses SKU */
-    const [masterRes, blrRes, mumRes, amzRes, skuRes] = await Promise.all([
-      fetchWarehouseData("Master"),
-      fetchWarehouseData("Bangalore"),
-      fetchWarehouseData("Mumbai"),
-      fetchWarehouseData("Amazon"),
+    // 1️⃣ Fetch data dynamically
+    const fetchPromises = [
+      fetchWarehouseData(SUMMARY_CONFIG.master.sheet),
+      fetchWarehouseData(SUMMARY_CONFIG.amazon.sheet),
       fetchWarehouseData("All warehouses SKU")
-    ]);
+    ];
 
-    /* 2) Parse Amazon for SKU list + synced date (same logic as old) */
-    const amzHdrs = amzRes.headers.map(h => (h || "").toLowerCase().trim());
-    const amzSkuIdx = amzHdrs.indexOf("sku");
-    const amzAvailIdx = amzHdrs.indexOf("available");
-    const amzDaysIdx = amzHdrs.indexOf("days to stockout");
-    const amzSaleIdx = amzHdrs.indexOf("last 30 days sale");
-    const amzSyncIdx = amzHdrs.indexOf("synced at");
+    SUMMARY_CONFIG.shiprocket.warehouses.forEach(w =>
+      fetchPromises.push(fetchWarehouseData(w.sheet))
+    );
 
-    let lastSynced = "";
-    if (amzSyncIdx !== -1 && amzRes.data.length > 0) {
-      const raw = (amzRes.data[0][amzSyncIdx] || "").trim();
-      if (raw.includes("/")) {
-        const [dd, mm, yy] = raw.split("/");
-        lastSynced = `${dd}-${mm}-${yy}`;
-      } else if (raw.includes("-")) {
-        const parts = raw.split("-");
-        if (parts[0].length === 4) {
-          const [yyyy, mm, dd] = raw.substring(0, 10).split("-");
-          lastSynced = `${dd}-${mm}-${yyyy}`;
-        } else {
-          lastSynced = raw.substring(0, 10);
-        }
-      }
-    }
-    syncedEl.innerText = "LAST SYNCED: " + (lastSynced || "N/A");
+    const results = await Promise.all(fetchPromises);
 
-    /* 3) Build lookup maps for each inventory tab */
-    function buildMasterMap(res) {
-      // Master sheet: labelled + non labelled only
-      const hdrs = res.headers.map(h => (h || "").toLowerCase().trim());
-      const skuI = hdrs.indexOf("sku");
-      const labI = hdrs.indexOf("labelled");
-      const nonLabI = hdrs.indexOf("non labelled");
-      const map = new Map();
-      res.data.forEach(row => {
-        const sku = (row[skuI] || "").toString().trim();
-        if (!sku) return;
-        map.set(sku, {
-          labelled: row[labI] || 0,
-          nonlabelled: row[nonLabI] || 0
-        });
-      });
-      return map;
-    }
+    const masterRes = results[0];
+    const amazonRes = results[1];
+    const skuRes = results[2];
+    const shiprocketResults = results.slice(3);
 
+    // 2️⃣ Helper map builder
     function buildStandardMap(res) {
       const hdrs = res.headers.map(h => (h || "").toLowerCase().trim());
       const skuI = hdrs.indexOf("sku");
       const availI = hdrs.indexOf("available");
       const daysI = hdrs.indexOf("days to stockout");
       const saleI = hdrs.indexOf("last 30 days sale");
+
       const map = new Map();
       res.data.forEach(row => {
         const sku = (row[skuI] || "").toString().trim();
@@ -786,154 +764,108 @@ async function showAllWarehouses() {
       return map;
     }
 
+    function buildMasterMap(res) {
+      const hdrs = res.headers.map(h => (h || "").toLowerCase().trim());
+      const skuI = hdrs.indexOf("sku");
+      const labI = hdrs.indexOf("labelled");
+      const nonLabI = hdrs.indexOf("non labelled");
+
+      const map = new Map();
+      res.data.forEach(row => {
+        const sku = (row[skuI] || "").toString().trim();
+        if (!sku) return;
+        map.set(sku, {
+          labelled: row[labI] || 0,
+          nonlabelled: row[nonLabI] || 0
+        });
+      });
+      return map;
+    }
+
     const masterMap = buildMasterMap(masterRes);
-    const blrMap = buildStandardMap(blrRes);
-    const mumMap = buildStandardMap(mumRes);
-    const amzMap = buildStandardMap(amzRes);
+    const amazonMap = buildStandardMap(amazonRes);
 
-    /* 4) Parse SKU override tab ("All warehouses SKU")
-         Expected columns:
-           A = display SKU (required)
-           B = Master SKU (optional)
-           C = Bangalore override (optional)
-           D = Mumbai override (optional)
-           E = Amazon override (optional)
-       Rows with blank display column are ignored.
-    */
-    const skuValues = skuRes.data || [];
-    const skuOverrideList = skuValues.map(row => ({
-      display: row[0] ? row[0].toString().trim() : "",
-      master: row[1] ? row[1].toString().trim() : "",
-      blr: row[2] ? row[2].toString().trim() : "",
-      mum: row[3] ? row[3].toString().trim() : "",
-      amz: row[4] ? row[4].toString().trim() : ""
-    })).filter(r => r.display !== "");
-
-    /* If override list is empty, fallback to Amazon SKU list (preserve old behavior) */
-    let finalSkuList = [];
-    if (skuOverrideList.length > 0) {
-      finalSkuList = skuOverrideList;
-    } else {
-      // create entries from Amazon map keys (display = amazon sku)
-      finalSkuList = Array.from(amzMap.keys()).map(k => ({ display: k, master: "", blr: "", mum: "", amz: k }));
-    }
-
-    /* 5) Helper formatters */
-    function formatMaster(masterObj) {
-      if (!masterObj) return "-";
-      const L = masterObj.labelled || 0;
-      const NL = masterObj.nonlabelled || 0;
-      if (!L && !NL) return "-";
-      return `${L}(L)/${NL}(NL)`;
-    }
-
-    function formatStandard(obj) {
-      if (!obj) return "-";
-      const a = obj.available || "";
-      const s = obj.last30 !== undefined ? obj.last30 : "";
-      const d = obj.days !== undefined ? obj.days : "-";
-      // show fallback if both available and days missing
-      const hasAny = (a !== "" && a !== 0) || (d !== "-" && d !== "") || (s !== "" && s !== 0);
-      if (!hasAny) return "-";
-      if (s !== "" && s !== 0) return `${a || 0} [${s || 0}] (${d || "-"})`;
-      return `${a || 0} (${d || "-"})`;
-    }
-
-    /* 6) Build rows using overrides */
-    const rows = finalSkuList.map(entry => {
-      const displaySKU = entry.display;
-
-      const masterSKU = entry.master || displaySKU;
-      const blrSKU = entry.blr || displaySKU;
-      const mumSKU = entry.mum || displaySKU;
-      const amzSKU = entry.amz || displaySKU;
-
-      const masterObj = masterMap.get(masterSKU);
-      const blrObj = blrMap.get(blrSKU);
-      const mumObj = mumMap.get(mumSKU);
-      const amzObj = amzMap.get(amzSKU);
-
-      return {
-        sku: displaySKU,
-        masterStr: formatMaster(masterObj),
-        blrStr: formatStandard(blrObj),
-        mumStr: formatStandard(mumObj),
-        amzStr: formatStandard(amzObj),
-        blrDays: blrObj?.days || "",
-        mumDays: mumObj?.days || "",
-        amzDays: amzObj?.days || ""
-      };
+    const shiprocketMaps = {};
+    SUMMARY_CONFIG.shiprocket.warehouses.forEach((w, i) => {
+      shiprocketMaps[w.sheet] = buildStandardMap(shiprocketResults[i]);
     });
 
-    /* 7) Render table */
-    thead.innerHTML = `
-      <tr>
-        <th>SKU</th>
-        <th>Master</th>
-        <th>SR-BLR</th>
-        <th>SR-MUM</th>
-        <th>Amazon</th>
-      </tr>
-    `;
+    // 3️⃣ Parse override sheet
+    const skuList = (skuRes.data || []).map(row => ({
+      common: row[0]?.toString().trim() || "",
+      master: row[1]?.toString().trim() || "",
+      shiprocket: row[2]?.toString().trim() || "",
+      amazon: row[3]?.toString().trim() || ""
+    })).filter(r => r.common);
+
+    // 4️⃣ Header Rendering
+    let headerHTML = `<tr><th>SKU</th><th>Master</th>`;
+    SUMMARY_CONFIG.shiprocket.warehouses.forEach(w => {
+      headerHTML += `<th>${w.label}</th>`;
+    });
+    headerHTML += `<th>${SUMMARY_CONFIG.amazon.label}</th></tr>`;
+    thead.innerHTML = headerHTML;
+
     tbody.innerHTML = "";
 
-    rows.forEach(r => {
-      const blrColor = (!isNaN(parseFloat(r.blrDays)) && parseFloat(r.blrDays) < 10) ? "#FF4D4F" : "#333";
-      const mumColor = (!isNaN(parseFloat(r.mumDays)) && parseFloat(r.mumDays) < 10) ? "#FF4D4F" : "#333";
-      const amzColor = (!isNaN(parseFloat(r.amzDays)) && parseFloat(r.amzDays) < 20) ? "#FF4D4F" : "#333";
+    // 5️⃣ Row Rendering
+    skuList.forEach(entry => {
+      const displaySKU = entry.common;
+      const masterSKU = entry.master || displaySKU;
+      const shiprocketSKU = entry.shiprocket || displaySKU;
+      const amazonSKU = entry.amazon || displaySKU;
 
-      const html = `
-        <tr>
-          <td>${r.sku}</td>
-          <td>${r.masterStr}</td>
-          <td style="color:${blrColor};font-weight:600;">${r.blrStr}</td>
-          <td style="color:${mumColor};font-weight:600;">${r.mumStr}</td>
-          <td style="color:${amzColor};font-weight:600;">${r.amzStr}</td>
-        </tr>
-      `;
-      tbody.insertAdjacentHTML("beforeend", html);
+      const masterObj = masterMap.get(masterSKU);
+      const amazonObj = amazonMap.get(amazonSKU);
+
+      let rowHTML = `<tr><td>${displaySKU}</td>`;
+
+      // Master
+      if (masterObj) {
+        const L = masterObj.labelled || 0;
+        const NL = masterObj.nonlabelled || 0;
+        rowHTML += `<td>${L}(L)/${NL}(NL)</td>`;
+      } else {
+        rowHTML += `<td>-</td>`;
+      }
+
+      // Shiprocket Warehouses
+      SUMMARY_CONFIG.shiprocket.warehouses.forEach(w => {
+        const obj = shiprocketMaps[w.sheet].get(shiprocketSKU);
+        const days = parseFloat(obj?.days);
+        const color = (!isNaN(days) && days < SUMMARY_CONFIG.threshold)
+          ? "#FF4D4F"
+          : "#333";
+
+        const text = obj
+          ? `${obj.available || 0} [${obj.last30 || 0}] (${obj.days || "-"})`
+          : "-";
+
+        rowHTML += `<td style="color:${color};font-weight:600;">${text}</td>`;
+      });
+
+      // Amazon
+      const amzDays = parseFloat(amazonObj?.days);
+      const amzColor = (!isNaN(amzDays) && amzDays < SUMMARY_CONFIG.threshold)
+        ? "#FF4D4F"
+        : "#333";
+
+      const amzText = amazonObj
+        ? `${amazonObj.available || 0} [${amazonObj.last30 || 0}] (${amazonObj.days || "-"})`
+        : "-";
+
+      rowHTML += `<td style="color:${amzColor};font-weight:600;">${amzText}</td>`;
+      rowHTML += `</tr>`;
+
+      tbody.insertAdjacentHTML("beforeend", rowHTML);
     });
 
-    if (rows.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No SKUs found.</td></tr>`;
-    }
+    syncedEl.innerText = "LAST SYNCED: Auto";
+
   } catch (err) {
-    console.error("All Warehouses load error:", err);
-    thead.innerHTML = "";
-    tbody.innerHTML = `<tr><td colspan="5" style="color:red;text-align:center;">Error loading data. Check console.</td></tr>`;
-    document.getElementById("lastSynced").innerText = "LAST SYNCED: N/A";
+    console.error(err);
+    tbody.innerHTML = `<tr><td colspan="6" style="color:red;text-align:center;">Error loading data.</td></tr>`;
   }
-}
-
-
-  /* ===== EXPORT FUNCTION (with synced date) ===== */
-function exportAllWarehouses() {
-  const table = document.querySelector("#warehouse table");
-  const syncedText = document.getElementById("lastSynced").innerText || "";
-  let csv = "";
-
-  // include last synced info at the top
-  csv += `"${syncedText.replace(/"/g, '""')}"\n\n`;
-
-  // now export the visible table
-  const rows = table.querySelectorAll("tr");
-  rows.forEach(row => {
-    const cols = row.querySelectorAll("th,td");
-    const arr = [];
-    cols.forEach(c => arr.push(`"${c.innerText.replace(/"/g, '""')}"`));
-    csv += arr.join(",") + "\n";
-  });
-
-  // download file
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const syncDateMatch = syncedText.match(/\d{2}-\d{2}-\d{4}/);
-  const syncDate = syncDateMatch ? syncDateMatch[0] : "unknown";
-  a.href = url;
-  a.download = `All_Warehouses_${syncDate}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 /* ====== BLINKIT ====== */
@@ -2880,6 +2812,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
