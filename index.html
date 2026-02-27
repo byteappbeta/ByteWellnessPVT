@@ -775,7 +775,7 @@ async function showAllWarehouses() {
       const skuI = hdrs.findIndex(h => h.includes("sku"));
       const availI = hdrs.findIndex(h => h.includes("available"));
       const saleI = hdrs.findIndex(h => h.includes("30"));
-      const daysI = hdrs.findIndex(h => h.includes("days"));
+      const daysI = hdrs.findIndex(h => h === "days to stockout");
       const syncedI = hdrs.findIndex(h => h.includes("synced"));
 
       const map = new Map();
@@ -806,7 +806,7 @@ async function showAllWarehouses() {
       const skuI = hdrs.findIndex(h => h.includes("sku"));
       const availI = hdrs.findIndex(h => h.includes("available"));
       const saleI = hdrs.findIndex(h => h.includes("30"));
-      const daysI = hdrs.findIndex(h => h.includes("days"));
+      const daysI = hdrs.findIndex(h => h === "days to stockout");
 
       const map = new Map();
 
@@ -2895,6 +2895,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
