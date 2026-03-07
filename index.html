@@ -197,11 +197,13 @@ body {
 <div class="container hidden" id="analytics">
   <h2>Analytics</h2>
 
-  <div class="card-grid">
-    <div class="card" onclick="showSection('analyticsUnits')">Multi Units</div>
-    <div class="card" onclick="showSection('analyticsSku')">SKU</div>
-    <div class="card" onclick="showSection('analyticsStates')">States</div>
-  </div>
+<div class="card-grid">
+  <div class="card" onclick="showSection('analyticsUnits')">Multi Units</div>
+  <div class="card" onclick="showSection('analyticsSku')">SKU</div>
+  <div class="card" onclick="showSection('analyticsStates')">States</div>
+  <div class="card" onclick="showSection('analyticsFreight'); setFreightYesterday();">Freight </div>
+  <div class="card" onclick="showSection('analyticsCourier')">Courier</div>
+</div>
 
   <button class="btn" onclick="showSection('home')">Back</button>
 </div>
@@ -330,6 +332,69 @@ body {
   </button>
 </div>
 
+  <!-- ANALYTICS: FREIGHT -->
+<div class="container hidden" id="analyticsFreight">
+
+<h2>Freight Analytics</h2>
+
+<div class="filters">
+From: <input type="date" id="freightFrom">
+To: <input type="date" id="freightTo">
+
+<button class="btn" onclick="loadFreight()">Apply</button>
+<button class="btn" style="background:#0f915a;" onclick="exportFreight()">Export</button>
+</div>
+
+<div style="margin-top:15px;font-weight:600;">
+Average shipping charge – Rs. <span id="avgShipping">0</span>
+</div>
+
+<table id="freightTable">
+
+<thead>
+<tr>
+<th>Courier</th>
+<th>Orders</th>
+<th>Total Freight</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td colspan="3">Loading...</td>
+</tr>
+</tbody>
+
+<tfoot>
+<tr>
+<td><b>TOTAL</b></td>
+<td id="freightTotalOrders">0</td>
+<td id="freightTotalAmount">0</td>
+</tr>
+</tfoot>
+
+</table>
+
+<button class="btn" onclick="showSection('analytics')">
+Back to Analytics
+</button>
+
+</div>
+
+  <!-- ANALYTICS: COURIER -->
+<div class="container hidden" id="analyticsCourier">
+
+<h2>Courier Analytics</h2>
+
+<p style="text-align:center;font-weight:600;margin-top:20px;">
+Data coming soon
+</p>
+
+<button class="btn" onclick="showSection('analytics')">
+Back to Analytics
+</button>
+
+</div>
 
 <!-- SALES MAIN PAGE -->
 <div class="container hidden" id="sales">
@@ -2535,6 +2600,120 @@ rows.forEach(r => {
 })();
 
 
+  
+  
+  /////////Freigh charges////////////
+
+function setFreightYesterday() {
+  const today = new Date();
+
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  const y = yesterday.getFullYear();
+  const m = String(yesterday.getMonth() + 1).padStart(2, '0');
+  const d = String(yesterday.getDate()).padStart(2, '0');
+
+  const dateStr = `${y}-${m}-${d}`;
+
+  document.getElementById("freightFrom").value = dateStr;
+  document.getElementById("freightTo").value = dateStr;
+
+  loadFreight();
+}
+
+
+async function loadFreight() {
+
+  const sheetId = "1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJk";
+  const sheetName = "Sheet1";
+
+  const url = `https://opensheet.elk.sh/${sheetId}/${sheetName}`;
+
+  const from = document.getElementById("freightFrom").value;
+  const to = document.getElementById("freightTo").value;
+
+  const fromDate = new Date(from);
+  const toDate = new Date(to);
+
+  const res = await fetch(url);
+  const data = await res.json();
+
+  const orders = {};
+  const courierMap = {};
+
+  data.forEach(row => {
+
+    const order = row["Order ID"];
+
+    const dateStr = row["Shiprocket Created At"];
+    if (!dateStr) return;
+
+    const parts = dateStr.split("-");
+    const date = new Date(parts[2], parts[1] - 1, parts[0]);
+
+    if (date < fromDate || date > toDate) return;
+
+    if (!orders[order]) {
+
+      let freight = parseFloat(row["Freight Total Amount"]) || 0;
+      const cod = parseFloat(row["COD Charges"]) || 0;
+      const rto = row["RTO Initiated Date"];
+
+      if (rto) freight -= cod;
+
+      orders[order] = {
+        courier: row["Courier Company"],
+        freight: freight
+      };
+
+    }
+
+  });
+
+  Object.values(orders).forEach(o => {
+
+    if (!courierMap[o.courier]) {
+      courierMap[o.courier] = { orders: 0, freight: 0 };
+    }
+
+    courierMap[o.courier].orders++;
+    courierMap[o.courier].freight += o.freight;
+
+  });
+
+  const tbody = document.querySelector("#freightTable tbody");
+  tbody.innerHTML = "";
+
+  let totalOrders = 0;
+  let totalFreight = 0;
+
+  Object.keys(courierMap).forEach(c => {
+
+    const r = courierMap[c];
+
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${c}</td>
+      <td>${r.orders}</td>
+      <td>${r.freight.toFixed(2)}</td>
+    `;
+
+    tbody.appendChild(tr);
+
+    totalOrders += r.orders;
+    totalFreight += r.freight;
+
+  });
+
+  document.getElementById("freightTotalOrders").innerText = totalOrders;
+  document.getElementById("freightTotalAmount").innerText = totalFreight.toFixed(2);
+
+  const avg = totalFreight / totalOrders || 0;
+  document.getElementById("avgShipping").innerText = avg.toFixed(2);
+
+}
 
 </script>
   
@@ -2895,6 +3074,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
