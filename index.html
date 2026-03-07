@@ -2636,8 +2636,9 @@ const to = document.getElementById("freightTo").value
 
 const fromDate = new Date(from)
 const toDate = new Date(to)
-
-toDate.setHours(23,59,59,999)
+  
+fromDate.setHours(0,0,0,0)
+toDate.setHours(23,59,59,999) 
 
 
 
@@ -2676,10 +2677,22 @@ if(!courier || courier.trim()==="") return
 if(!order || !dateStr) return
 
 
-const parts = dateStr.split("/")
-const date = new Date(parts[2],parts[1]-1,parts[0])
+let date
 
-if(date < fromDate || date > toDate) return
+if(typeof dateStr === "string" && dateStr.includes("/")){
+
+const parts = dateStr.split("/")
+date = new Date(parts[2], parts[1]-1, parts[0])
+
+}
+
+else{
+
+date = new Date(dateStr)
+
+}
+
+if(!(date >= fromDate && date <= toDate)) return
 
 
 
@@ -3128,6 +3141,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
