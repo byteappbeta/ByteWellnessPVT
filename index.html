@@ -201,7 +201,7 @@ body {
   <div class="card" onclick="showSection('analyticsUnits')">Multi Units</div>
   <div class="card" onclick="showSection('analyticsSku')">SKU</div>
   <div class="card" onclick="showSection('analyticsStates')">States</div>
-  <div class="card" onclick="showSection('analyticsFreight'); setFreightYesterday();">Freight </div>
+  <div class="card" onclick="showSection('analyticsFreight'); setFreightYesterday();">Freight</div>
   <div class="card" onclick="showSection('analyticsCourier')">Courier</div>
 </div>
 
@@ -356,20 +356,18 @@ Average shipping charge – Rs. <span id="avgShipping">0</span>
 <th>Courier</th>
 <th>Orders</th>
 <th>Total Freight</th>
+<th>Avg Freight</th>
 </tr>
 </thead>
 
-<tbody>
-<tr>
-<td colspan="3">Loading...</td>
-</tr>
-</tbody>
+<tbody></tbody>
 
 <tfoot>
 <tr>
-<td><b>TOTAL</b></td>
-<td id="freightTotalOrders">0</td>
-<td id="freightTotalAmount">0</td>
+<td><b>Total</b></td>
+<td id="freightTotalOrders"></td>
+<td id="freightTotalAmount"></td>
+<td></td>
 </tr>
 </tfoot>
 
@@ -2604,114 +2602,164 @@ rows.forEach(r => {
   
   /////////Freigh charges////////////
 
-function setFreightYesterday() {
-  const today = new Date();
+function setFreightYesterday(){
 
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
+const today = new Date()
+const yesterday = new Date(today)
 
-  const y = yesterday.getFullYear();
-  const m = String(yesterday.getMonth() + 1).padStart(2, '0');
-  const d = String(yesterday.getDate()).padStart(2, '0');
+yesterday.setDate(today.getDate()-1)
 
-  const dateStr = `${y}-${m}-${d}`;
+const y = yesterday.getFullYear()
+const m = String(yesterday.getMonth()+1).padStart(2,'0')
+const d = String(yesterday.getDate()).padStart(2,'0')
 
-  document.getElementById("freightFrom").value = dateStr;
-  document.getElementById("freightTo").value = dateStr;
+const dateStr = `${y}-${m}-${d}`
 
-  loadFreight();
+document.getElementById("freightFrom").value = dateStr
+document.getElementById("freightTo").value = dateStr
+
+loadFreight()
+
 }
 
 
-async function loadFreight() {
 
-  const sheetId = "1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJk";
-  const sheetName = "Sheet1";
+async function loadFreight(){
 
-  const url = `https://opensheet.elk.sh/${sheetId}/${sheetName}`;
+const sheetId = "1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJk"
 
-  const from = document.getElementById("freightFrom").value;
-  const to = document.getElementById("freightTo").value;
+const url =
+`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=Sheet1`
 
-  const fromDate = new Date(from);
-  const toDate = new Date(to);
+const from = document.getElementById("freightFrom").value
+const to = document.getElementById("freightTo").value
 
-  const res = await fetch(url);
-  const data = await res.json();
+const fromDate = new Date(from)
+const toDate = new Date(to)
 
-  const orders = {};
-  const courierMap = {};
+toDate.setHours(23,59,59,999)
 
-  data.forEach(row => {
 
-    const order = row["Order ID"];
 
-    const dateStr = row["Shiprocket Created At"];
-    if (!dateStr) return;
+const res = await fetch(url)
+const text = await res.text()
 
-    const parts = dateStr.split("-");
-    const date = new Date(parts[2], parts[1] - 1, parts[0]);
+const json = JSON.parse(text.substring(47).slice(0,-2))
 
-    if (date < fromDate || date > toDate) return;
+const rows = json.table.rows
 
-    if (!orders[order]) {
 
-      let freight = parseFloat(row["Freight Total Amount"]) || 0;
-      const cod = parseFloat(row["COD Charges"]) || 0;
-      const rto = row["RTO Initiated Date"];
 
-      if (rto) freight -= cod;
+const orders = {}
+const courierMap = {}
 
-      orders[order] = {
-        courier: row["Courier Company"],
-        freight: freight
-      };
 
-    }
 
-  });
+rows.forEach(r=>{
 
-  Object.values(orders).forEach(o => {
+const order = r.c[0]?.v
+const dateStr = r.c[1]?.v
+const courier = r.c[2]?.v
+const cod = parseFloat(r.c[3]?.v) || 0
+const freightVal = parseFloat(r.c[4]?.v) || 0
+const rto = r.c[5]?.v
 
-    if (!courierMap[o.courier]) {
-      courierMap[o.courier] = { orders: 0, freight: 0 };
-    }
 
-    courierMap[o.courier].orders++;
-    courierMap[o.courier].freight += o.freight;
+if(!courier || courier.trim()==="") return
+if(!order || !dateStr) return
 
-  });
 
-  const tbody = document.querySelector("#freightTable tbody");
-  tbody.innerHTML = "";
 
-  let totalOrders = 0;
-  let totalFreight = 0;
+const parts = dateStr.split("/")
+const date = new Date(parts[2],parts[1]-1,parts[0])
 
-  Object.keys(courierMap).forEach(c => {
+if(date < fromDate || date > toDate) return
 
-    const r = courierMap[c];
 
-    const tr = document.createElement("tr");
 
-    tr.innerHTML = `
-      <td>${c}</td>
-      <td>${r.orders}</td>
-      <td>${r.freight.toFixed(2)}</td>
-    `;
+if(!orders[order]){
 
-    tbody.appendChild(tr);
+let freight = freightVal
 
-    totalOrders += r.orders;
-    totalFreight += r.freight;
+if(rto && rto.trim()!==""){
+freight = freight - cod
+}
 
-  });
+orders[order] = {
+courier:courier,
+freight:freight
+}
 
-  document.getElementById("freightTotalOrders").innerText = totalOrders;
-  document.getElementById("freightTotalAmount").innerText = totalFreight.toFixed(2);
+}
 
-  const avg = totalFreight / totalOrders || 0;
-  document.getElementById("avgShipping").innerText = avg.toFixed(2);
+})
+
+
+
+Object.values(orders).forEach(o=>{
+
+if(!courierMap[o.courier]){
+courierMap[o.courier] = {orders:0,freight:0}
+}
+
+courierMap[o.courier].orders++
+courierMap[o.courier].freight += o.freight
+
+})
+
+
+
+let totalOrders = 0
+let totalFreight = 0
+
+Object.values(courierMap).forEach(v=>{
+
+totalOrders += v.orders
+totalFreight += v.freight
+
+})
+
+
+
+const sorted = Object.entries(courierMap)
+.sort((a,b)=>b[1].freight - a[1].freight)
+
+
+
+const tbody = document.querySelector("#freightTable tbody")
+tbody.innerHTML = ""
+
+
+
+sorted.forEach(([courier,v])=>{
+
+const orderShare = ((v.orders/totalOrders)*100).toFixed(1)
+const freightShare = ((v.freight/totalFreight)*100).toFixed(1)
+
+const avgFreight = v.freight / v.orders
+
+const tr = document.createElement("tr")
+
+tr.innerHTML = `
+<td>${courier}</td>
+<td>${v.orders} (${orderShare}%)</td>
+<td>${Math.round(v.freight)} (${freightShare}%)</td>
+<td>${avgFreight.toFixed(2)}</td>
+`
+
+tbody.appendChild(tr)
+
+})
+
+
+
+document.getElementById("freightTotalOrders").innerText = totalOrders
+document.getElementById("freightTotalAmount").innerText = Math.round(totalFreight)
+
+
+
+const avgShipping = totalFreight / totalOrders
+document.getElementById("avgShipping").innerText = avgShipping.toFixed(2)
 
 }
 
@@ -3074,6 +3122,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
