@@ -2606,7 +2606,6 @@ function setFreightYesterday(){
 
 const today = new Date()
 const yesterday = new Date(today)
-
 yesterday.setDate(today.getDate()-1)
 
 const y = yesterday.getFullYear()
@@ -2627,54 +2626,36 @@ loadFreight()
 async function loadFreight(){
 
 const sheetId = "1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJk"
+const sheetName = "Sheet1"
 
-const url =
-`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=Sheet1`
+const url = `https://opensheet.elk.sh/${sheetId}/${sheetName}`
 
 const from = document.getElementById("freightFrom").value
 const to = document.getElementById("freightTo").value
 
 const fromDate = new Date(from)
 const toDate = new Date(to)
-
 toDate.setHours(23,59,59,999)
 
-
-
 const res = await fetch(url)
-const text = await res.text()
+const data = await res.json()
 
-const json = JSON.parse(text.substring(47).slice(0,-2))
-
-const headers = json.table.cols.map(c => c.label)
-
-const orderIndex = headers.indexOf("Order ID")
-const dateIndex = headers.indexOf("Shiprocket Created At")
-const courierIndex = headers.indexOf("Courier Company")
-const codIndex = headers.indexOf("COD Charges")
-const freightIndex = headers.indexOf("Freight Total Amount")
-const rtoIndex = headers.indexOf("RTO Initiated Date")
-
-const rows = json.table.rows
 
 const orders = {}
 const courierMap = {}
 
 
 
-rows.forEach(r=>{
+data.forEach(row=>{
 
-const order = r.c[orderIndex]?.v
-const dateStr = r.c[dateIndex]?.v
-const courier = r.c[courierIndex]?.v
-const cod = parseFloat(r.c[codIndex]?.v) || 0
-const freightVal = parseFloat(r.c[freightIndex]?.v) || 0
-const rto = r.c[rtoIndex]?.v
-
-
+const courier = row["Courier Company"]
 if(!courier || courier.trim()==="") return
-if(!order || !dateStr) return
 
+const order = row["Order ID"]
+if(!order) return
+
+const dateStr = row["Shiprocket Created At"]
+if(!dateStr) return
 
 const parts = dateStr.split("/")
 const date = new Date(parts[2],parts[1]-1,parts[0])
@@ -2682,10 +2663,11 @@ const date = new Date(parts[2],parts[1]-1,parts[0])
 if(date < fromDate || date > toDate) return
 
 
-
 if(!orders[order]){
 
-let freight = freightVal
+let freight = parseFloat(row["Freight Total Amount"]) || 0
+const cod = parseFloat(row["COD Charges"]) || 0
+const rto = row["RTO Initiated Date"]
 
 if(rto && rto.trim()!==""){
 freight = freight - cod
@@ -2705,7 +2687,7 @@ freight:freight
 Object.values(orders).forEach(o=>{
 
 if(!courierMap[o.courier]){
-courierMap[o.courier] = {orders:0,freight:0}
+courierMap[o.courier] = {orders:0, freight:0}
 }
 
 courierMap[o.courier].orders++
@@ -2718,11 +2700,10 @@ courierMap[o.courier].freight += o.freight
 let totalOrders = 0
 let totalFreight = 0
 
-Object.values(courierMap).forEach(v=>{
 
+Object.values(courierMap).forEach(v=>{
 totalOrders += v.orders
 totalFreight += v.freight
-
 })
 
 
@@ -2739,8 +2720,8 @@ tbody.innerHTML = ""
 
 sorted.forEach(([courier,v])=>{
 
-const orderShare = totalOrders ? ((v.orders/totalOrders)*100).toFixed(1) : 0
-const freightShare = totalFreight ? ((v.freight/totalFreight)*100).toFixed(1) : 0
+const orderShare = ((v.orders/totalOrders)*100).toFixed(1)
+const freightShare = ((v.freight/totalFreight)*100).toFixed(1)
 
 const avgFreight = v.freight / v.orders
 
@@ -2765,7 +2746,7 @@ document.getElementById("freightTotalAmount").innerText = Math.round(totalFreigh
 
 
 const avgShipping = totalFreight / totalOrders
-document.getElementById("avgShipping").innerText = avgShipping ? avgShipping.toFixed(2) : "0.00"
+document.getElementById("avgShipping").innerText = avgShipping.toFixed(2)
 
 }
 
@@ -3128,6 +3109,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
