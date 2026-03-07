@@ -2676,9 +2676,18 @@ if (!order || !courier || !dateStr) return;
 if (!courier.trim()) return;
 
 
-// Date format: DD/MM/YYYY (Shiprocket)
-const [day, month, year] = dateStr.split('/');
-const rowDate = new Date(year, month - 1, day);
+let rowDate;
+
+if (typeof dateStr === "string") {
+  // format: DD/MM/YYYY
+  const [day, month, year] = dateStr.split('/');
+  rowDate = new Date(year, month - 1, day);
+} else {
+  // already a Date object from GViz
+  rowDate = new Date(dateStr);
+}
+
+rowDate.setHours(0,0,0,0);
 
 
 // Filter
@@ -3130,6 +3139,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
