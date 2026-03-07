@@ -2646,9 +2646,16 @@ const text = await res.text()
 
 const json = JSON.parse(text.substring(47).slice(0,-2))
 
+const headers = json.table.cols.map(c => c.label)
+
+const orderIndex = headers.indexOf("Order ID")
+const dateIndex = headers.indexOf("Shiprocket Created At")
+const courierIndex = headers.indexOf("Courier Company")
+const codIndex = headers.indexOf("COD Charges")
+const freightIndex = headers.indexOf("Freight Total Amount")
+const rtoIndex = headers.indexOf("RTO Initiated Date")
+
 const rows = json.table.rows
-
-
 
 const orders = {}
 const courierMap = {}
@@ -2657,17 +2664,16 @@ const courierMap = {}
 
 rows.forEach(r=>{
 
-const order = r.c[0]?.v
-const dateStr = r.c[1]?.v
-const courier = r.c[2]?.v
-const cod = parseFloat(r.c[3]?.v) || 0
-const freightVal = parseFloat(r.c[4]?.v) || 0
-const rto = r.c[5]?.v
+const order = r.c[orderIndex]?.v
+const dateStr = r.c[dateIndex]?.v
+const courier = r.c[courierIndex]?.v
+const cod = parseFloat(r.c[codIndex]?.v) || 0
+const freightVal = parseFloat(r.c[freightIndex]?.v) || 0
+const rto = r.c[rtoIndex]?.v
 
 
 if(!courier || courier.trim()==="") return
 if(!order || !dateStr) return
-
 
 
 const parts = dateStr.split("/")
@@ -2733,8 +2739,8 @@ tbody.innerHTML = ""
 
 sorted.forEach(([courier,v])=>{
 
-const orderShare = ((v.orders/totalOrders)*100).toFixed(1)
-const freightShare = ((v.freight/totalFreight)*100).toFixed(1)
+const orderShare = totalOrders ? ((v.orders/totalOrders)*100).toFixed(1) : 0
+const freightShare = totalFreight ? ((v.freight/totalFreight)*100).toFixed(1) : 0
 
 const avgFreight = v.freight / v.orders
 
@@ -2759,7 +2765,7 @@ document.getElementById("freightTotalAmount").innerText = Math.round(totalFreigh
 
 
 const avgShipping = totalFreight / totalOrders
-document.getElementById("avgShipping").innerText = avgShipping.toFixed(2)
+document.getElementById("avgShipping").innerText = avgShipping ? avgShipping.toFixed(2) : "0.00"
 
 }
 
@@ -3122,6 +3128,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
