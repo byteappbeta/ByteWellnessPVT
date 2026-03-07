@@ -2600,7 +2600,7 @@ rows.forEach(r => {
 
   
   
-  /////////Freigh charges////////////
+///////// Freight charges ///////////
 
 function setFreightYesterday(){
 
@@ -2628,77 +2628,70 @@ async function loadFreight(){
 
 const sheetId = "1JlCAQoJkF8sLm3RvQ_fGmALmLOR4bo338pZB2gQIhJk"
 
-const url =
-`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=Sheet1`
+const url = `https://opensheet.elk.sh/${sheetId}/Sheet1`
 
 const from = document.getElementById("freightFrom").value
 const to = document.getElementById("freightTo").value
 
 const fromDate = new Date(from)
 const toDate = new Date(to)
-  
+
 fromDate.setHours(0,0,0,0)
-toDate.setHours(23,59,59,999) 
+toDate.setHours(23,59,59,999)
 
 
 
 const res = await fetch(url)
-const text = await res.text()
+const data = await res.json()
 
-const json = JSON.parse(text.substring(47).slice(0,-2))
 
-const headers = json.table.cols.map(c => c.label)
-
-const orderIndex = headers.indexOf("Order ID")
-const dateIndex = headers.indexOf("Shiprocket Created At")
-const courierIndex = headers.indexOf("Courier Company")
-const codIndex = headers.indexOf("COD Charges")
-const freightIndex = headers.indexOf("Freight Total Amount")
-const rtoIndex = headers.indexOf("RTO Initiated Date")
-
-const rows = json.table.rows
 
 const orders = {}
 const courierMap = {}
 
 
 
-rows.forEach(r => {
+data.forEach(row => {
 
-const order = r.c[orderIndex]?.v;
-const courier = r.c[courierIndex]?.v;
-const cod = Number(r.c[codIndex]?.v) || 0;
-const freightVal = Number(r.c[freightIndex]?.v) || 0;
-const rto = r.c[rtoIndex]?.v;
+const order = row["Order ID"]
+const courier = row["Courier Company"]
+const cod = Number(row["COD Charges"]) || 0
+const freightVal = Number(row["Freight Total Amount"]) || 0
+const rto = row["RTO Initiated Date"]
+const dateStr = row["Shiprocket Created At"]
 
-const dateCell = r.c[dateIndex];
+if (!order || !courier || !dateStr) return
+if (!courier.trim()) return
 
-if (!order || !courier || !dateCell) return;
-if (!courier.trim()) return;
 
-const rowDate = new Date(dateCell.v);
-rowDate.setHours(0,0,0,0);
+// Date format in sheet: DD/MM/YYYY
+const [day, month, year] = dateStr.split("/")
+const rowDate = new Date(year, month-1, day)
 
-if (!(rowDate >= fromDate && rowDate <= toDate)) return;
+rowDate.setHours(0,0,0,0)
+
+if (!(rowDate >= fromDate && rowDate <= toDate)) return
+
 
 
 // Unique order logic
 if (!orders[order]) {
 
-let freight = freightVal;
+let freight = freightVal
 
 if (rto && rto.trim() !== '') {
-freight = freight - cod;
+freight = freight - cod
 }
 
 orders[order] = {
 courier: courier,
 freight: freight
-};
+}
 
 }
 
-});
+})
+
 
 
 Object.values(orders).forEach(o=>{
@@ -3127,6 +3120,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
