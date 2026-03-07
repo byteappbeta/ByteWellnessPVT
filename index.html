@@ -2670,27 +2670,15 @@ const courier = r.c[courierIndex]?.v;
 const cod = Number(r.c[codIndex]?.v) || 0;
 const freightVal = Number(r.c[freightIndex]?.v) || 0;
 const rto = r.c[rtoIndex]?.v;
-const dateStr = r.c[dateIndex]?.v;
 
-if (!order || !courier || !dateStr) return;
+const dateCell = r.c[dateIndex];
+
+if (!order || !courier || !dateCell) return;
 if (!courier.trim()) return;
 
-
-let rowDate;
-
-if (typeof dateStr === "string") {
-  // format: DD/MM/YYYY
-  const [day, month, year] = dateStr.split('/');
-  rowDate = new Date(year, month - 1, day);
-} else {
-  // already a Date object from GViz
-  rowDate = new Date(dateStr);
-}
-
+const rowDate = new Date(dateCell.v);
 rowDate.setHours(0,0,0,0);
 
-
-// Filter
 if (!(rowDate >= fromDate && rowDate <= toDate)) return;
 
 
@@ -3139,6 +3127,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
