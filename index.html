@@ -338,18 +338,52 @@ body {
   </button>
 </div>
 
-  <!-- ANALYTICS: STATES - AMAZON -->
+<!-- ANALYTICS: STATES - AMAZON -->
 <div class="container hidden" id="analyticsStatesAmazon">
 
-  <h2>Amazon – States Analytics</h2>
+<h2>Amazon – States Analytics</h2>
 
-  <p style="text-align:center; font-weight:600; margin-top:20px;">
-    Data coming soon
-  </p>
+<div class="filters">
+From: <input type="date" id="amzStateFrom">
+To: <input type="date" id="amzStateTo">
 
-  <button class="btn" onclick="showSection('analyticsStates')">
-    Back to States
-  </button>
+<button class="btn" onclick="loadAmazonStateAnalytics()">Apply</button>
+<button class="btn" style="background:#0f915a;" onclick="exportAmazonStates()">Export</button>
+</div>
+
+<table id="amazonStatesTable">
+
+<thead>
+<tr>
+<th>State</th>
+<th>Orders</th>
+<th>Share%</th>
+<th>Multi Orders</th>
+<th>Multi Share%</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td colspan="5">Loading...</td>
+</tr>
+</tbody>
+
+<tfoot>
+<tr>
+<td><b>Total</b></td>
+<td id="amzStateTotalOrders"></td>
+<td>100%</td>
+<td id="amzStateTotalMulti"></td>
+<td>100%</td>
+</tr>
+</tfoot>
+
+</table>
+
+<button class="btn" onclick="showSection('analyticsStates')">
+Back to States
+</button>
 
 </div>
 
@@ -2807,6 +2841,298 @@ const avgShipping = totalFreight / totalOrders
 document.getElementById("avgShipping").innerText = avgShipping ? avgShipping.toFixed(2) : "0.00"
 
 }
+
+
+
+
+  /* ===== AMAZON STATE ANALYTICS ===== */
+
+const AMAZON_STATE_SHEET_ID = "1e4Vdkw2Ms0dCxskAKbUfLk3ttqeFT_nbQDhsPtKWWhA";
+const AMAZON_STATE_TAB = "Orders";
+
+
+/* ---- State Normalization ---- */
+
+function normalizeState(val){
+
+if(!val) return null;
+
+const s = val.toString().trim().toUpperCase().replace(/\s/g,"");
+
+const map = {
+
+ANDHRAPRADESH:"ANDHRA PRADESH",
+AP:"ANDHRA PRADESH",
+
+ARUNACHALPRADESH:"ARUNACHAL PRADESH",
+AR:"ARUNACHAL PRADESH",
+
+ASSAM:"ASSAM",
+AS:"ASSAM",
+
+BIHAR:"BIHAR",
+BR:"BIHAR",
+
+CHHATTISGARH:"CHHATTISGARH",
+CG:"CHHATTISGARH",
+
+GOA:"GOA",
+GA:"GOA",
+
+GUJARAT:"GUJARAT",
+GJ:"GUJARAT",
+
+HARYANA:"HARYANA",
+HR:"HARYANA",
+
+HIMACHALPRADESH:"HIMACHAL PRADESH",
+HP:"HIMACHAL PRADESH",
+
+JHARKHAND:"JHARKHAND",
+JH:"JHARKHAND",
+
+KARNATAKA:"KARNATAKA",
+KA:"KARNATAKA",
+
+KERALA:"KERALA",
+KL:"KERALA",
+
+MADHYAPRADESH:"MADHYA PRADESH",
+MP:"MADHYA PRADESH",
+
+MAHARASHTRA:"MAHARASHTRA",
+MH:"MAHARASHTRA",
+
+MANIPUR:"MANIPUR",
+MN:"MANIPUR",
+
+MEGHALAYA:"MEGHALAYA",
+ML:"MEGHALAYA",
+
+MIZORAM:"MIZORAM",
+MZ:"MIZORAM",
+
+NAGALAND:"NAGALAND",
+NL:"NAGALAND",
+
+ODISHA:"ODISHA",
+OR:"ODISHA",
+OD:"ODISHA",
+
+PUNJAB:"PUNJAB",
+PB:"PUNJAB",
+
+RAJASTHAN:"RAJASTHAN",
+RJ:"RAJASTHAN",
+
+SIKKIM:"SIKKIM",
+SK:"SIKKIM",
+
+TAMILNADU:"TAMIL NADU",
+TN:"TAMIL NADU",
+
+TELANGANA:"TELANGANA",
+TG:"TELANGANA",
+
+TRIPURA:"TRIPURA",
+TR:"TRIPURA",
+
+UTTARPRADESH:"UTTAR PRADESH",
+UP:"UTTAR PRADESH",
+
+UTTARAKHAND:"UTTARAKHAND",
+UK:"UTTARAKHAND",
+UT:"UTTARAKHAND",
+
+WESTBENGAL:"WEST BENGAL",
+WB:"WEST BENGAL"
+
+};
+
+return map[s] || null;
+
+}
+
+
+/* ---- Fetch Orders ---- */
+
+async function fetchAmazonStateData(){
+
+const url =
+`https://sheets.googleapis.com/v4/spreadsheets/${AMAZON_STATE_SHEET_ID}/values/${encodeURIComponent(AMAZON_STATE_TAB)}?key=${API_KEY}`;
+
+const res = await fetch(url);
+const json = await res.json();
+
+return json.values || [];
+
+}
+
+
+/* ---- Analytics ---- */
+
+async function loadAmazonStateAnalytics(){
+
+const startVal = document.getElementById("amzStateFrom").value;
+const endVal = document.getElementById("amzStateTo").value;
+
+if(!startVal || !endVal){
+alert("Select date range");
+return;
+}
+
+const start = new Date(startVal);
+const end = new Date(endVal);
+end.setHours(23,59,59,999);
+
+const values = await fetchAmazonStateData();
+
+if(values.length < 2) return;
+
+const headers = values[0].map(h => h.toLowerCase().trim());
+
+const dateIdx = headers.indexOf("purchase-date");
+const orderIdx = headers.indexOf("amazon-order-id");
+const stateIdx = headers.indexOf("ship-state");
+const qtyIdx = headers.indexOf("quantity");
+
+const rows = values.slice(1);
+
+/* ---- Order Tracking ---- */
+
+const orderStates = new Map();
+const multiOrders = new Set();
+
+rows.forEach(r=>{
+
+const d = parseSheetDate(r[dateIdx]);
+if(!d) return;
+
+if(d < start || d > end) return;
+
+const orderId = (r[orderIdx] || "").trim();
+const stateRaw = r[stateIdx];
+const qty = parseFloat(r[qtyIdx]||0);
+
+const state = normalizeState(stateRaw);
+if(!state) return;
+
+if(!orderStates.has(orderId)){
+orderStates.set(orderId,{state,rows:0,qty:0});
+}
+
+const obj = orderStates.get(orderId);
+
+obj.rows +=1;
+obj.qty += qty;
+
+});
+
+
+/* ---- Identify Multi Orders ---- */
+
+orderStates.forEach((v,k)=>{
+
+if(v.qty>=2 || v.rows>1){
+multiOrders.add(k);
+}
+
+});
+
+
+/* ---- Aggregate By State ---- */
+
+const stateMap = {};
+
+orderStates.forEach((v,k)=>{
+
+if(!stateMap[v.state]){
+stateMap[v.state] = {orders:0,multi:0};
+}
+
+stateMap[v.state].orders +=1;
+
+if(multiOrders.has(k)){
+stateMap[v.state].multi +=1;
+}
+
+});
+
+
+/* ---- Totals ---- */
+
+let totalOrders = orderStates.size;
+let totalMulti = multiOrders.size;
+
+
+/* ---- Render Table ---- */
+
+const tbody = document.querySelector("#amazonStatesTable tbody");
+
+tbody.innerHTML="";
+
+Object.entries(stateMap)
+.sort((a,b)=>b[1].orders-a[1].orders)
+.forEach(([state,data])=>{
+
+const share = Math.round((data.orders/totalOrders)*100);
+const multiShare = totalMulti ? Math.round((data.multi/totalMulti)*100):0;
+
+tbody.insertAdjacentHTML("beforeend",`
+
+<tr>
+<td>${state}</td>
+<td>${data.orders}</td>
+<td>${share}%</td>
+<td>${data.multi}</td>
+<td>${multiShare}%</td>
+</tr>
+
+`);
+
+});
+
+
+document.getElementById("amzStateTotalOrders").innerText = totalOrders;
+document.getElementById("amzStateTotalMulti").innerText = totalMulti;
+
+}
+
+
+/* ---- Export ---- */
+
+function exportAmazonStates(){
+
+const table = document.getElementById("amazonStatesTable");
+
+let csv="";
+
+table.querySelectorAll("tr").forEach(r=>{
+
+const cols = r.querySelectorAll("th,td");
+
+const arr=[];
+
+cols.forEach(c=>arr.push(`"${c.innerText}"`));
+
+csv+=arr.join(",")+"\n";
+
+});
+
+const blob = new Blob([csv],{type:"text/csv"});
+
+const url = URL.createObjectURL(blob);
+
+const a = document.createElement("a");
+
+a.href=url;
+a.download="amazon_state_analytics.csv";
+
+a.click();
+
+URL.revokeObjectURL(url);
+
+}
   
 </script>
   
@@ -3167,6 +3493,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
 
 
 
