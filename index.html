@@ -2681,6 +2681,25 @@ rows.forEach(r => {
 })();
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   
   
 ///////// Freight charges ///////////
@@ -2742,9 +2761,12 @@ const cod = Number(row["COD Charges"]) || 0
 const freightVal = Number(row["Freight Total Amount"]) || 0
 const rto = row["RTO Initiated Date"]
 const dateStr = row["Shiprocket Created At"]
+const status = row["Status"]
 
 if (!order || !courier || !dateStr) return
 if (!courier.trim()) return
+
+if (status && status.trim().toUpperCase() === "CANCELED") return
 
 
 // Date format in sheet: DD/MM/YYYY
@@ -2754,7 +2776,6 @@ const rowDate = new Date(year, month-1, day)
 rowDate.setHours(0,0,0,0)
 
 if (!(rowDate >= fromDate && rowDate <= toDate)) return
-
 
 
 // Unique order logic
@@ -2774,7 +2795,6 @@ freight: freight
 }
 
 })
-
 
 
 Object.values(orders).forEach(o=>{
